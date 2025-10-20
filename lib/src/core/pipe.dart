@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'hub.dart' show Hub;
@@ -87,7 +86,6 @@ class Pipe<T> {
   ///
   /// By default, uses standard Dart inequality (!=) to compare values.
   /// Override this to customize when rebuilds occur.
-  @protected
   bool shouldNotify(T newValue) {
     return _value != newValue;
   }
@@ -95,7 +93,6 @@ class Pipe<T> {
   /// Notifies all subscribers that the value has changed
   ///
   /// This is called automatically by the setter. You typically don't need to call this manually.
-  @protected
   void notifySubscribers() {
     if (_isNotifying) return;
 
@@ -103,14 +100,14 @@ class Pipe<T> {
     try {
       // Create a copy to avoid concurrent modification
       final subscribersCopy = List.of(_subscribers);
-      subscribersCopy.forEach((subscriber) {
+      for (final subscriber in subscribersCopy) {
         if (subscriber.mounted) {
           final element = subscriber as Element;
           if (element.mounted) {
             element.markNeedsBuild();
           }
         }
-      });
+      }
 
       // Notify additional listeners
       final listenersCopy = List.of(_listeners);
@@ -126,7 +123,6 @@ class Pipe<T> {
   ///
   /// This is used by subclasses to update the value
   /// without going through the public setter.
-  @protected
   void updateValue(T newValue) {
     _value = newValue;
     notifySubscribers();

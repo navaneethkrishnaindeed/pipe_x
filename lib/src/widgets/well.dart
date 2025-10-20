@@ -53,7 +53,7 @@ class Well extends Widget {
 
 /// The element that manages subscriptions to multiple pipes
 class WellElement extends ComponentElement implements ReactiveSubscriber {
-  WellElement(Well widget) : super(widget);
+  WellElement(super.widget);
 
   @override
   Well get widget => super.widget as Well;

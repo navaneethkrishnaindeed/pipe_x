@@ -1,0 +1,29 @@
+# Files to exclude from the published package
+
+# Presentation files
+pipe_presentation.md
+
+# IDE files
+*.iml
+.idea/
+.vscode/
+
+# Build files
+build/
+
+# Alternative example implementations
+example/lib/main_bloc.dart
+
+# Example app build artifacts  
+example/build/
+example/.flutter-plugins
+example/.flutter-plugins-dependencies
+example/android/local.properties
+example/android/.gradle/
+example/ios/Pods/
+example/ios/.symlinks/
+
+# Git files
+.git/
+.gitignore
+

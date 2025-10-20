@@ -47,7 +47,7 @@ class Sink<T> extends Widget {
 ///
 /// You typically don't interact with this class directly.
 class SinkElement<T> extends ComponentElement implements ReactiveSubscriber {
-  SinkElement(Sink<T> widget) : super(widget);
+  SinkElement(super.widget);
 
   @override
   Sink<T> get widget => super.widget as Sink<T>;

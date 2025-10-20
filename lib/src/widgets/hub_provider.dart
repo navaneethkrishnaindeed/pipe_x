@@ -69,7 +69,7 @@ class HubProvider<T extends Hub> extends StatefulWidget {
             final hub = (widget as dynamic).hub;
             if (hub is T) {
               context.dependOnInheritedElement(element);
-              return hub as T;
+              return hub;
             }
           } catch (_) {}
         }
@@ -122,7 +122,7 @@ class HubProvider<T extends Hub> extends StatefulWidget {
           try {
             final hub = (widget as dynamic).hub;
             if (hub is T) {
-              return hub as T;
+              return hub;
             }
           } catch (_) {}
         }

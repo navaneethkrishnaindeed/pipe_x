@@ -1,0 +1,25 @@
+name: pipe_x
+description: A lightweight, reactive state management library for Flutter with fine-grained reactivity and minimal boilerplate.
+version: 1.0.0
+repository:
+issue_tracker: 
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+topics:
+  - state-management
+  - reactive
+  - flutter
+  - signals
+  - controller

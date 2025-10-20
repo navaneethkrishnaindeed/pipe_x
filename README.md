@@ -9,11 +9,15 @@
 1. [What is Pipe?](#what-is-pipe)
 2. [Philosophy & Core Principles](#philosophy--core-principles)
 3. [Architecture & How It Works](#architecture--how-it-works)
-4. [Core Components Deep Dive](#core-components-deep-dive)
-5. [Usage Guide](#usage-guide)
+4. [Usage Guide](#usage-guide)
+5. [Common Patterns](#common-patterns)
 6. [Best Practices & Guidelines](#best-practices--guidelines)
-7. [Common Patterns](#common-patterns)
-8. [Restrictions & Points to Remember](#restrictions--points-to-remember)
+7. [Restrictions & Points to Remember](#restrictions--points-to-remember)
+8. [Philosophical Principles](#philosophical-principles)
+9. [Core Components Deep Dive](#core-components-deep-dive)
+10. [Migration Guide](#migration-guide)
+11. [Additional Resources](#additional-resources)
+12. [License & Credits](#license--credits)
 
 ---
 
@@ -155,649 +159,6 @@ UI updated with new value
 
 ---
 
-## Core Components Deep Dive
-
-### 1. Pipe<T> - The Reactive Container
-
-**Location**: `lib/src/core/pipe.dart`
-
-#### Purpose
-`Pipe<T>` is the fundamental building block of Pipe. It holds a value of type `T` and notifies subscribers when the value changes.
-
-#### Key Properties
-
-```dart
-class Pipe<T> {
-  T _value;                                  // Current value
-  Set<ReactiveSubscriber> _subscribers;      // UI elements listening
-  List<VoidCallback> _listeners;             // Additional callbacks
-  bool _disposed;                            // Lifecycle state
-  bool _autoDispose;                         // Auto-cleanup flag
-  bool _isRegisteredWithController;          // Hub-managed flag
-}
-```
-
-#### Core Methods
-
-##### `value` (getter/setter)
-
-```dart
-T get value {
-  if (_disposed) throw StateError('Cannot access disposed Pipe');
-  return _value;
-}
-
-set value(T newValue) {
-  if (_disposed) throw StateError('Cannot set value on disposed Pipe');
-  if (shouldNotify(newValue)) {
-    _value = newValue;
-    notifySubscribers();
-  }
-}
-```
-
-**How it works:**
-1. Checks if pipe is disposed (throws if true)
-2. Calls `shouldNotify()` to determine if change is significant
-3. Updates internal value
-4. Notifies all subscribers to rebuild
-
-##### `shouldNotify(T newValue)` - Change Detection
-
-```dart
-bool shouldNotify(T newValue) {
-  return _value != newValue;
-}
-```
-
-**Principle**: Uses Dart's `!=` operator to detect changes. For primitives (int, String), this compares values. For objects, it compares references.
-
-**Why this matters:**
-- `count.value = 5` → rebuilds if count wasn't already 5
-- `user.value = user.value` → doesn't rebuild (same reference)
-- `user.value = User(...)` → always rebuilds (new reference)
-
-##### `pump(T newValue)` - Force Update
-
-```dart
-void pump(T newValue) {
-  if (_disposed) throw StateError('Cannot update disposed Pipe');
-  _value = newValue;
-  notifySubscribers();  // ALWAYS notifies, bypassing shouldNotify
-}
-```
-
-**Use case**: When you mutate an object's internal state without changing the reference:
-
-```dart
-user.value.name = 'John';  // Reference unchanged
-user.pump(user.value);     // Force rebuild
-```
-
-##### `notifySubscribers()` - The Notification Engine
-
-```dart
-void notifySubscribers() {
-  if (_isNotifying) return;  // Prevent recursion
-  
-  _isNotifying = true;
-  try {
-    // Create copy to avoid concurrent modification
-    final subscribersCopy = List.of(_subscribers);
-    subscribersCopy.forEach((subscriber) {
-      if (subscriber.mounted) {
-        final element = subscriber as Element;
-        if (element.mounted) {
-          element.markNeedsBuild();  // Flutter's rebuild mechanism
-        }
-      }
-    });
-    
-    // Notify additional listeners
-    final listenersCopy = List.of(_listeners);
-    for (final listener in listenersCopy) {
-      listener();
-    }
-  } finally {
-    _isNotifying = false;
-  }
-}
-```
-
-**Principles:**
-1. **Guard against recursion**: `_isNotifying` flag prevents infinite loops
-2. **Safe iteration**: Creates copies to handle subscriptions changing during notification
-3. **Mounted check**: Only rebuilds widgets still in the tree
-4. **Flutter integration**: Calls `markNeedsBuild()` which integrates with Flutter's build pipeline
-
-##### `attach(ReactiveSubscriber)` / `detach(ReactiveSubscriber)` - Subscription Management
-
-```dart
-void attach(ReactiveSubscriber subscriber) => _subscribers.add(subscriber);
-
-void detach(ReactiveSubscriber subscriber) {
-  _subscribers.remove(subscriber);
-  
-  // Auto-dispose if enabled and no more subscribers
-  if (_autoDispose && 
-      !_isRegisteredWithController && 
-      _subscribers.isEmpty && 
-      _listeners.isEmpty && 
-      !_disposed) {
-    scheduleMicrotask(() {
-      if (_subscribers.isEmpty && _listeners.isEmpty && !_disposed) {
-        dispose();
-      }
-    });
-  }
-}
-```
-
-**Auto-disposal principle**: 
-- Standalone pipes (not in a Hub) automatically clean themselves up when the last subscriber leaves
-- Uses `scheduleMicrotask` to avoid disposing during iteration
-- Double-checks conditions to handle race conditions
-
-#### Auto-Registration with Hubs
-
-```dart
-Pipe(this._value, {bool? autoDispose})
-    : _autoDispose = autoDispose ?? true {
-  _autoRegisterIfNeeded(this);
-}
-
-static void _autoRegisterIfNeeded(Pipe pipe) {
-  final hub = Hub.current;  // Check if we're in a Hub constructor
-  if (hub != null) {
-    hub.autoRegisterPipe(pipe);
-    pipe._isRegisteredWithController = true;
-    pipe._autoDispose = false;  // Hub manages lifecycle
-  }
-}
-```
-
-**How it works:**
-1. During Hub construction, the Hub adds itself to a static stack
-2. When a Pipe is created, it checks `Hub.current` (top of stack)
-3. If a Hub is found, the Pipe registers itself automatically
-4. Auto-dispose is disabled (Hub will handle disposal)
-
----
-
-### 2. Hub - The State Manager
-
-**Location**: `lib/src/core/hub.dart`
-
-#### Purpose
-Hub groups related Pipes and manages their lifecycle. It's the central point for business logic and state management.
-
-#### Key Properties
-
-```dart
-abstract class Hub {
-  bool _disposed;                          // Lifecycle state
-  Map<String, Pipe> _pipes;                // Registered pipes
-  int _autoRegisterCounter;                // Auto-naming counter
-  static List<Hub> _constructionStack;     // For auto-registration
-}
-```
-
-#### Construction Flow
-
-```dart
-Hub() {
-  _constructionStack.add(this);
-  // Subclass constructor runs here
-  // late final fields initialized when first accessed
-}
-```
-
-**The Magic of Auto-Registration:**
-
-```dart
-class CounterHub extends Hub {
-  late final count = Pipe(0);  // ← Initialized when first accessed
-  // At this moment:
-  // 1. Pipe constructor runs
-  // 2. Pipe checks Hub.current (finds CounterHub on stack)
-  // 3. Pipe calls hub.autoRegisterPipe(this)
-  // 4. Pipe is now tracked for disposal
-}
-```
-
-#### Core Methods
-
-##### `completeConstruction()` - Lifecycle Management
-
-```dart
-void completeConstruction() {
-  _constructionStack.remove(this);
-}
-```
-
-**Why this exists**: After the Hub is fully constructed, we remove it from the stack so that standalone Pipes created later won't accidentally register.
-
-Called by `HubProvider` automatically.
-
-##### `autoRegisterPipe(Pipe pipe)` - Automatic Registration
-
-```dart
-void autoRegisterPipe(Pipe pipe) {
-  if (_disposed) throw StateError('Cannot register pipe on disposed hub');
-  final key = '_auto_${_autoRegisterCounter++}';
-  _pipes[key] = pipe;
-}
-```
-
-**Automatic naming**: Each pipe gets a unique key, so you don't need to provide one.
-
-##### `dispose()` - Cleanup
-
-```dart
-void dispose() {
-  if (_disposed) return;  // Idempotent
-  _disposed = true;
-  
-  // Dispose all registered pipes
-  for (final pipe in _pipes.values) {
-    pipe.dispose();
-  }
-  _pipes.clear();
-  
-  onDispose();  // Custom cleanup hook
-}
-```
-
-**Disposal cascade**: When a Hub disposes, all its Pipes dispose, which clears all subscriptions. This is why you never need to manually clean up Pipes in a Hub.
-
-##### `subscriberCount` - Debugging Helper
-
-```dart
-int get subscriberCount {
-  return _pipes.values.fold(0, (sum, pipe) => sum + pipe.subscriberCount);
-}
-```
-
-**Use case**: Understanding how many widgets are currently subscribed to this Hub's state.
-
-#### Design Pattern: Business Logic Container
-
-```dart
-class ShoppingCartHub extends Hub {
-  // State
-  late final items = Pipe<List<Product>>([]);
-  late final discount = Pipe(0.0);
-  
-  // Computed values (getters)
-  double get subtotal => items.value.fold(0, (sum, item) => sum + item.price);
-  double get total => subtotal * (1 - discount.value);
-  
-  // Business logic (methods)
-  void addItem(Product product) {
-    items.value = [...items.value, product];
-  }
-  
-  void applyDiscount(double percent) {
-    discount.value = percent.clamp(0.0, 1.0);
-  }
-  
-  // Lifecycle
-  @override
-  void onDispose() {
-    // Custom cleanup (e.g., cancel timers, close streams)
-  }
-}
-```
-
----
-
-### 3. Sink<T> - Single Pipe Subscriber
-
-**Location**: `lib/src/widgets/sink.dart`
-
-#### Purpose
-`Sink` is a widget that subscribes to a single `Pipe` and rebuilds when that pipe's value changes.
-
-#### Structure
-
-```dart
-class Sink<T> extends Widget {
-  final Pipe<T> pipe;
-  final Widget Function(BuildContext context, T value) builder;
-}
-```
-
-#### How It Works
-
-The actual work happens in `SinkElement`:
-
-```dart
-class SinkElement<T> extends ComponentElement implements ReactiveSubscriber {
-  Pipe<T>? _currentPipe;
-  
-  @override
-  void mount(Element? parent, Object? newSlot) {
-    super.mount(parent, newSlot);
-    _currentPipe = widget.pipe;
-    _currentPipe!.attach(this);  // Subscribe
-  }
-  
-  @override
-  void update(Sink<T> newWidget) {
-    final oldPipe = _currentPipe;
-    final newPipe = newWidget.pipe;
-    
-    if (oldPipe != newPipe) {
-      oldPipe?.detach(this);     // Unsubscribe from old
-      newPipe.attach(this);       // Subscribe to new
-      _currentPipe = newPipe;
-    }
-    
-    super.update(newWidget);
-  }
-  
-  @override
-  void unmount() {
-    _currentPipe?.detach(this);   // Cleanup
-    _currentPipe = null;
-    super.unmount();
-  }
-  
-  @override
-  Widget build() {
-    return widget.builder(this, widget.pipe.value);
-  }
-}
-```
-
-**Lifecycle Integration:**
-1. **Mount**: Subscribes to pipe
-2. **Update**: Handles pipe changes (rare, but important for hot reload)
-3. **Unmount**: Unsubscribes (prevents memory leaks)
-4. **Build**: Reads current value and builds UI
-
-**ReactiveSubscriber Interface:**
-- `Sink` implements this through `SinkElement`
-- When `pipe.notifySubscribers()` is called, it calls `markNeedsBuild()` on the element
-- Flutter then schedules a rebuild
-
----
-
-### 4. Well - Multiple Pipe Subscriber
-
-**Location**: `lib/src/widgets/well.dart`
-
-#### Purpose
-`Well` subscribes to multiple `Pipe`s and rebuilds when ANY of them change. Avoids nested `Sink` widgets.
-
-#### Structure
-
-```dart
-class Well extends Widget {
-  final List<Pipe> pipes;  // Note: Not typed, accepts any Pipe<T>
-  final Widget Function(BuildContext context) builder;
-}
-```
-
-#### How It Works
-
-```dart
-class WellElement extends ComponentElement implements ReactiveSubscriber {
-  List<Pipe>? _currentPipes;
-  
-  @override
-  void mount(Element? parent, Object? newSlot) {
-    super.mount(parent, newSlot);
-    _currentPipes = widget.pipes;
-    for (final pipe in _currentPipes!) {
-      pipe.attach(this);  // Subscribe to all
-    }
-  }
-  
-  @override
-  void update(Well newWidget) {
-    final oldPipes = _currentPipes!;
-    final newPipes = newWidget.pipes;
-    
-    // Unsubscribe from removed pipes
-    for (final oldPipe in oldPipes) {
-      if (!newPipes.contains(oldPipe)) {
-        oldPipe.detach(this);
-      }
-    }
-    
-    // Subscribe to new pipes
-    for (final newPipe in newPipes) {
-      if (!oldPipes.contains(newPipe)) {
-        newPipe.attach(this);
-      }
-    }
-    
-    _currentPipes = newPipes;
-    super.update(newWidget);
-  }
-  
-  @override
-  void unmount() {
-    for (final pipe in _currentPipes!) {
-      pipe.detach(this);  // Cleanup all
-    }
-    _currentPipes = null;
-    super.unmount();
-  }
-  
-  @override
-  Widget build() {
-    return widget.builder(this);
-  }
-}
-```
-
-**Smart Subscription Management:**
-- Only subscribes to pipes that were added
-- Only unsubscribes from pipes that were removed
-- Minimizes unnecessary subscription churn
-
-**When ANY pipe changes:**
-1. `pipe.notifySubscribers()` is called
-2. `WellElement.markNeedsBuild()` is called
-3. Flutter rebuilds the `Well`
-4. Builder has access to ALL pipe values
-
----
-
-### 5. HubProvider - Dependency Injection
-
-**Location**: `lib/src/widgets/hub_provider.dart`
-
-#### Purpose
-Provides a Hub to the widget tree and manages its lifecycle.
-
-#### Structure
-
-```dart
-class HubProvider<T extends Hub> extends StatefulWidget {
-  final T Function() create;
-  final Widget child;
-}
-```
-
-#### How It Works
-
-```dart
-class _HubProviderState<T extends Hub> extends State<HubProvider<T>> {
-  late T _hub;
-  
-  @override
-  void initState() {
-    super.initState();
-    _hub = widget.create();
-    _hub.completeConstruction();  // Remove from stack
-  }
-  
-  @override
-  void dispose() {
-    _hub.dispose();  // Cleanup everything
-    super.dispose();
-  }
-  
-  @override
-  Widget build(BuildContext context) {
-    return _InheritedHub<T>(
-      hub: _hub,
-      child: widget.child,
-    );
-  }
-}
-```
-
-**Lifecycle Management:**
-1. **Creation**: Hub created in `initState()`
-2. **Construction complete**: Removed from stack so standalone pipes work
-3. **Disposal**: Hub disposed in `dispose()`, cascading to all pipes
-
-#### InheritedWidget Integration
-
-```dart
-class _InheritedHub<T extends Hub> extends InheritedWidget {
-  final T hub;
-  
-  @override
-  bool updateShouldNotify(_InheritedHub<T> oldWidget) {
-    return hub != oldWidget.hub;  // Only if instance changes
-  }
-}
-```
-
-**Why InheritedWidget?**
-- Efficient lookup up the widget tree
-- Flutter's built-in mechanism for dependency injection
-- Only notifies dependents if the Hub instance changes (rare)
-
-#### Access Methods
-
-##### `HubProvider.of<T>(context)` - With Dependency
-
-```dart
-static T of<T extends Hub>(BuildContext context) {
-  final provider = context.dependOnInheritedWidgetOfExactType<_InheritedHub<T>>();
-  if (provider != null) return provider.hub;
-  
-  // Fallback: Check MultiHubProvider...
-  
-  throw StateError('No HubProvider<$T> found in context.');
-}
-```
-
-**Creates a dependency**: If you call this in `build()`, the widget will rebuild if the Hub instance changes.
-
-##### `HubProvider.read<T>(context)` - Without Dependency
-
-```dart
-static T read<T extends Hub>(BuildContext context) {
-  final provider = context.getInheritedWidgetOfExactType<_InheritedHub<T>>();
-  if (provider != null) return provider.hub;
-  
-  // Fallback: Check MultiHubProvider...
-  
-  throw StateError('No HubProvider<$T> found in context.');
-}
-```
-
-**No dependency**: Widget won't rebuild when Hub changes. Use in callbacks.
-
-**Key Difference:**
-- `dependOnInheritedWidgetOfExactType` → creates dependency
-- `getInheritedWidgetOfExactType` → no dependency
-
----
-
-### 6. BuildContext Extensions
-
-**Location**: `lib/src/extensions/build_context_extension.dart`
-
-#### Purpose
-Convenience methods for accessing Hubs.
-
-```dart
-extension HubBuildContextExtension on BuildContext {
-  T read<T extends Hub>() => HubProvider.read<T>(this);
-}
-```
-
-**Usage:**
-```dart
-// Instead of:
-HubProvider.read<CounterHub>(context).increment();
-
-// Write:
-context.read<CounterHub>().increment();
-```
-
----
-
-### 7. MultiHubProvider - Multiple Hubs
-
-**Location**: `lib/src/widgets/multi_hub_provider.dart`
-
-#### Purpose
-Provide multiple Hubs without nesting.
-
-```dart
-class MultiHubProvider extends StatelessWidget {
-  final List<Hub Function()> hubs;
-  final Widget child;
-  
-  @override
-  Widget build(BuildContext context) {
-    Widget current = child;
-    
-    // Wrap in reverse order
-    for (int i = hubs.length - 1; i >= 0; i--) {
-      current = _HubProviderWrapper(
-        create: hubs[i],
-        child: current,
-      );
-    }
-    
-    return current;
-  }
-}
-```
-
-**How it works:**
-1. Creates a chain of `_HubProviderWrapper` widgets
-2. Each wrapper manages one Hub
-3. Uses dynamic `_InheritedHubDynamic` for type flexibility
-
-**Dynamic Type Handling:**
-Since we don't know the Hub types at compile time, `MultiHubProvider` uses a dynamic `InheritedWidget` and runtime type checking.
-
----
-
-### 8. ReactiveSubscriber Interface
-
-**Location**: `lib/src/core/reactive_subscriber.dart`
-
-#### Purpose
-Decouples Pipe from Flutter's Element implementation.
-
-```dart
-abstract class ReactiveSubscriber {
-  void markNeedsBuild();
-  bool get mounted;
-}
-```
-
-**Why this exists:**
-- `Pipe` doesn't need to import Flutter's Element
-- Testability: Can mock subscribers
-- Flexibility: Any class can implement this interface
-
-**Implementation:**
-Both `SinkElement` and `WellElement` implement this interface, allowing Pipes to notify them without knowing they're Flutter elements.
-
----
 
 ## Usage Guide
 
@@ -934,6 +295,19 @@ class MyHub extends Hub {
 - State that needs lifecycle management
 
 ---
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Common Patterns
 
@@ -1714,6 +1088,649 @@ Sink<int>(  // Type-safe
   builder: (context, int value) => Text('$value'),
 )
 ```
+
+---
+## Core Components Deep Dive
+
+### 1. Pipe<T> - The Reactive Container
+
+**Location**: `lib/src/core/pipe.dart`
+
+#### Purpose
+`Pipe<T>` is the fundamental building block of Pipe. It holds a value of type `T` and notifies subscribers when the value changes.
+
+#### Key Properties
+
+```dart
+class Pipe<T> {
+  T _value;                                  // Current value
+  Set<ReactiveSubscriber> _subscribers;      // UI elements listening
+  List<VoidCallback> _listeners;             // Additional callbacks
+  bool _disposed;                            // Lifecycle state
+  bool _autoDispose;                         // Auto-cleanup flag
+  bool _isRegisteredWithController;          // Hub-managed flag
+}
+```
+
+#### Core Methods
+
+##### `value` (getter/setter)
+
+```dart
+T get value {
+  if (_disposed) throw StateError('Cannot access disposed Pipe');
+  return _value;
+}
+
+set value(T newValue) {
+  if (_disposed) throw StateError('Cannot set value on disposed Pipe');
+  if (shouldNotify(newValue)) {
+    _value = newValue;
+    notifySubscribers();
+  }
+}
+```
+
+**How it works:**
+1. Checks if pipe is disposed (throws if true)
+2. Calls `shouldNotify()` to determine if change is significant
+3. Updates internal value
+4. Notifies all subscribers to rebuild
+
+##### `shouldNotify(T newValue)` - Change Detection
+
+```dart
+bool shouldNotify(T newValue) {
+  return _value != newValue;
+}
+```
+
+**Principle**: Uses Dart's `!=` operator to detect changes. For primitives (int, String), this compares values. For objects, it compares references.
+
+**Why this matters:**
+- `count.value = 5` → rebuilds if count wasn't already 5
+- `user.value = user.value` → doesn't rebuild (same reference)
+- `user.value = User(...)` → always rebuilds (new reference)
+
+##### `pump(T newValue)` - Force Update
+
+```dart
+void pump(T newValue) {
+  if (_disposed) throw StateError('Cannot update disposed Pipe');
+  _value = newValue;
+  notifySubscribers();  // ALWAYS notifies, bypassing shouldNotify
+}
+```
+
+**Use case**: When you mutate an object's internal state without changing the reference:
+
+```dart
+user.value.name = 'John';  // Reference unchanged
+user.pump(user.value);     // Force rebuild
+```
+
+##### `notifySubscribers()` - The Notification Engine
+
+```dart
+void notifySubscribers() {
+  if (_isNotifying) return;  // Prevent recursion
+  
+  _isNotifying = true;
+  try {
+    // Create copy to avoid concurrent modification
+    final subscribersCopy = List.of(_subscribers);
+    subscribersCopy.forEach((subscriber) {
+      if (subscriber.mounted) {
+        final element = subscriber as Element;
+        if (element.mounted) {
+          element.markNeedsBuild();  // Flutter's rebuild mechanism
+        }
+      }
+    });
+    
+    // Notify additional listeners
+    final listenersCopy = List.of(_listeners);
+    for (final listener in listenersCopy) {
+      listener();
+    }
+  } finally {
+    _isNotifying = false;
+  }
+}
+```
+
+**Principles:**
+1. **Guard against recursion**: `_isNotifying` flag prevents infinite loops
+2. **Safe iteration**: Creates copies to handle subscriptions changing during notification
+3. **Mounted check**: Only rebuilds widgets still in the tree
+4. **Flutter integration**: Calls `markNeedsBuild()` which integrates with Flutter's build pipeline
+
+##### `attach(ReactiveSubscriber)` / `detach(ReactiveSubscriber)` - Subscription Management
+
+```dart
+void attach(ReactiveSubscriber subscriber) => _subscribers.add(subscriber);
+
+void detach(ReactiveSubscriber subscriber) {
+  _subscribers.remove(subscriber);
+  
+  // Auto-dispose if enabled and no more subscribers
+  if (_autoDispose && 
+      !_isRegisteredWithController && 
+      _subscribers.isEmpty && 
+      _listeners.isEmpty && 
+      !_disposed) {
+    scheduleMicrotask(() {
+      if (_subscribers.isEmpty && _listeners.isEmpty && !_disposed) {
+        dispose();
+      }
+    });
+  }
+}
+```
+
+**Auto-disposal principle**: 
+- Standalone pipes (not in a Hub) automatically clean themselves up when the last subscriber leaves
+- Uses `scheduleMicrotask` to avoid disposing during iteration
+- Double-checks conditions to handle race conditions
+
+#### Auto-Registration with Hubs
+
+```dart
+Pipe(this._value, {bool? autoDispose})
+    : _autoDispose = autoDispose ?? true {
+  _autoRegisterIfNeeded(this);
+}
+
+static void _autoRegisterIfNeeded(Pipe pipe) {
+  final hub = Hub.current;  // Check if we're in a Hub constructor
+  if (hub != null) {
+    hub.autoRegisterPipe(pipe);
+    pipe._isRegisteredWithController = true;
+    pipe._autoDispose = false;  // Hub manages lifecycle
+  }
+}
+```
+
+**How it works:**
+1. During Hub construction, the Hub adds itself to a static stack
+2. When a Pipe is created, it checks `Hub.current` (top of stack)
+3. If a Hub is found, the Pipe registers itself automatically
+4. Auto-dispose is disabled (Hub will handle disposal)
+
+---
+
+### 2. Hub - The State Manager
+
+**Location**: `lib/src/core/hub.dart`
+
+#### Purpose
+Hub groups related Pipes and manages their lifecycle. It's the central point for business logic and state management.
+
+#### Key Properties
+
+```dart
+abstract class Hub {
+  bool _disposed;                          // Lifecycle state
+  Map<String, Pipe> _pipes;                // Registered pipes
+  int _autoRegisterCounter;                // Auto-naming counter
+  static List<Hub> _constructionStack;     // For auto-registration
+}
+```
+
+#### Construction Flow
+
+```dart
+Hub() {
+  _constructionStack.add(this);
+  // Subclass constructor runs here
+  // late final fields initialized when first accessed
+}
+```
+
+**The Magic of Auto-Registration:**
+
+```dart
+class CounterHub extends Hub {
+  late final count = Pipe(0);  // ← Initialized when first accessed
+  // At this moment:
+  // 1. Pipe constructor runs
+  // 2. Pipe checks Hub.current (finds CounterHub on stack)
+  // 3. Pipe calls hub.autoRegisterPipe(this)
+  // 4. Pipe is now tracked for disposal
+}
+```
+
+#### Core Methods
+
+##### `completeConstruction()` - Lifecycle Management
+
+```dart
+void completeConstruction() {
+  _constructionStack.remove(this);
+}
+```
+
+**Why this exists**: After the Hub is fully constructed, we remove it from the stack so that standalone Pipes created later won't accidentally register.
+
+Called by `HubProvider` automatically.
+
+##### `autoRegisterPipe(Pipe pipe)` - Automatic Registration
+
+```dart
+void autoRegisterPipe(Pipe pipe) {
+  if (_disposed) throw StateError('Cannot register pipe on disposed hub');
+  final key = '_auto_${_autoRegisterCounter++}';
+  _pipes[key] = pipe;
+}
+```
+
+**Automatic naming**: Each pipe gets a unique key, so you don't need to provide one.
+
+##### `dispose()` - Cleanup
+
+```dart
+void dispose() {
+  if (_disposed) return;  // Idempotent
+  _disposed = true;
+  
+  // Dispose all registered pipes
+  for (final pipe in _pipes.values) {
+    pipe.dispose();
+  }
+  _pipes.clear();
+  
+  onDispose();  // Custom cleanup hook
+}
+```
+
+**Disposal cascade**: When a Hub disposes, all its Pipes dispose, which clears all subscriptions. This is why you never need to manually clean up Pipes in a Hub.
+
+##### `subscriberCount` - Debugging Helper
+
+```dart
+int get subscriberCount {
+  return _pipes.values.fold(0, (sum, pipe) => sum + pipe.subscriberCount);
+}
+```
+
+**Use case**: Understanding how many widgets are currently subscribed to this Hub's state.
+
+#### Design Pattern: Business Logic Container
+
+```dart
+class ShoppingCartHub extends Hub {
+  // State
+  late final items = Pipe<List<Product>>([]);
+  late final discount = Pipe(0.0);
+  
+  // Computed values (getters)
+  double get subtotal => items.value.fold(0, (sum, item) => sum + item.price);
+  double get total => subtotal * (1 - discount.value);
+  
+  // Business logic (methods)
+  void addItem(Product product) {
+    items.value = [...items.value, product];
+  }
+  
+  void applyDiscount(double percent) {
+    discount.value = percent.clamp(0.0, 1.0);
+  }
+  
+  // Lifecycle
+  @override
+  void onDispose() {
+    // Custom cleanup (e.g., cancel timers, close streams)
+  }
+}
+```
+
+---
+
+### 3. Sink<T> - Single Pipe Subscriber
+
+**Location**: `lib/src/widgets/sink.dart`
+
+#### Purpose
+`Sink` is a widget that subscribes to a single `Pipe` and rebuilds when that pipe's value changes.
+
+#### Structure
+
+```dart
+class Sink<T> extends Widget {
+  final Pipe<T> pipe;
+  final Widget Function(BuildContext context, T value) builder;
+}
+```
+
+#### How It Works
+
+The actual work happens in `SinkElement`:
+
+```dart
+class SinkElement<T> extends ComponentElement implements ReactiveSubscriber {
+  Pipe<T>? _currentPipe;
+  
+  @override
+  void mount(Element? parent, Object? newSlot) {
+    super.mount(parent, newSlot);
+    _currentPipe = widget.pipe;
+    _currentPipe!.attach(this);  // Subscribe
+  }
+  
+  @override
+  void update(Sink<T> newWidget) {
+    final oldPipe = _currentPipe;
+    final newPipe = newWidget.pipe;
+    
+    if (oldPipe != newPipe) {
+      oldPipe?.detach(this);     // Unsubscribe from old
+      newPipe.attach(this);       // Subscribe to new
+      _currentPipe = newPipe;
+    }
+    
+    super.update(newWidget);
+  }
+  
+  @override
+  void unmount() {
+    _currentPipe?.detach(this);   // Cleanup
+    _currentPipe = null;
+    super.unmount();
+  }
+  
+  @override
+  Widget build() {
+    return widget.builder(this, widget.pipe.value);
+  }
+}
+```
+
+**Lifecycle Integration:**
+1. **Mount**: Subscribes to pipe
+2. **Update**: Handles pipe changes (rare, but important for hot reload)
+3. **Unmount**: Unsubscribes (prevents memory leaks)
+4. **Build**: Reads current value and builds UI
+
+**ReactiveSubscriber Interface:**
+- `Sink` implements this through `SinkElement`
+- When `pipe.notifySubscribers()` is called, it calls `markNeedsBuild()` on the element
+- Flutter then schedules a rebuild
+
+---
+
+### 4. Well - Multiple Pipe Subscriber
+
+**Location**: `lib/src/widgets/well.dart`
+
+#### Purpose
+`Well` subscribes to multiple `Pipe`s and rebuilds when ANY of them change. Avoids nested `Sink` widgets.
+
+#### Structure
+
+```dart
+class Well extends Widget {
+  final List<Pipe> pipes;  // Note: Not typed, accepts any Pipe<T>
+  final Widget Function(BuildContext context) builder;
+}
+```
+
+#### How It Works
+
+```dart
+class WellElement extends ComponentElement implements ReactiveSubscriber {
+  List<Pipe>? _currentPipes;
+  
+  @override
+  void mount(Element? parent, Object? newSlot) {
+    super.mount(parent, newSlot);
+    _currentPipes = widget.pipes;
+    for (final pipe in _currentPipes!) {
+      pipe.attach(this);  // Subscribe to all
+    }
+  }
+  
+  @override
+  void update(Well newWidget) {
+    final oldPipes = _currentPipes!;
+    final newPipes = newWidget.pipes;
+    
+    // Unsubscribe from removed pipes
+    for (final oldPipe in oldPipes) {
+      if (!newPipes.contains(oldPipe)) {
+        oldPipe.detach(this);
+      }
+    }
+    
+    // Subscribe to new pipes
+    for (final newPipe in newPipes) {
+      if (!oldPipes.contains(newPipe)) {
+        newPipe.attach(this);
+      }
+    }
+    
+    _currentPipes = newPipes;
+    super.update(newWidget);
+  }
+  
+  @override
+  void unmount() {
+    for (final pipe in _currentPipes!) {
+      pipe.detach(this);  // Cleanup all
+    }
+    _currentPipes = null;
+    super.unmount();
+  }
+  
+  @override
+  Widget build() {
+    return widget.builder(this);
+  }
+}
+```
+
+**Smart Subscription Management:**
+- Only subscribes to pipes that were added
+- Only unsubscribes from pipes that were removed
+- Minimizes unnecessary subscription churn
+
+**When ANY pipe changes:**
+1. `pipe.notifySubscribers()` is called
+2. `WellElement.markNeedsBuild()` is called
+3. Flutter rebuilds the `Well`
+4. Builder has access to ALL pipe values
+
+---
+
+### 5. HubProvider - Dependency Injection
+
+**Location**: `lib/src/widgets/hub_provider.dart`
+
+#### Purpose
+Provides a Hub to the widget tree and manages its lifecycle.
+
+#### Structure
+
+```dart
+class HubProvider<T extends Hub> extends StatefulWidget {
+  final T Function() create;
+  final Widget child;
+}
+```
+
+#### How It Works
+
+```dart
+class _HubProviderState<T extends Hub> extends State<HubProvider<T>> {
+  late T _hub;
+  
+  @override
+  void initState() {
+    super.initState();
+    _hub = widget.create();
+    _hub.completeConstruction();  // Remove from stack
+  }
+  
+  @override
+  void dispose() {
+    _hub.dispose();  // Cleanup everything
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return _InheritedHub<T>(
+      hub: _hub,
+      child: widget.child,
+    );
+  }
+}
+```
+
+**Lifecycle Management:**
+1. **Creation**: Hub created in `initState()`
+2. **Construction complete**: Removed from stack so standalone pipes work
+3. **Disposal**: Hub disposed in `dispose()`, cascading to all pipes
+
+#### InheritedWidget Integration
+
+```dart
+class _InheritedHub<T extends Hub> extends InheritedWidget {
+  final T hub;
+  
+  @override
+  bool updateShouldNotify(_InheritedHub<T> oldWidget) {
+    return hub != oldWidget.hub;  // Only if instance changes
+  }
+}
+```
+
+**Why InheritedWidget?**
+- Efficient lookup up the widget tree
+- Flutter's built-in mechanism for dependency injection
+- Only notifies dependents if the Hub instance changes (rare)
+
+#### Access Methods
+
+##### `HubProvider.of<T>(context)` - With Dependency
+
+```dart
+static T of<T extends Hub>(BuildContext context) {
+  final provider = context.dependOnInheritedWidgetOfExactType<_InheritedHub<T>>();
+  if (provider != null) return provider.hub;
+  
+  // Fallback: Check MultiHubProvider...
+  
+  throw StateError('No HubProvider<$T> found in context.');
+}
+```
+
+**Creates a dependency**: If you call this in `build()`, the widget will rebuild if the Hub instance changes.
+
+##### `HubProvider.read<T>(context)` - Without Dependency
+
+```dart
+static T read<T extends Hub>(BuildContext context) {
+  final provider = context.getInheritedWidgetOfExactType<_InheritedHub<T>>();
+  if (provider != null) return provider.hub;
+  
+  // Fallback: Check MultiHubProvider...
+  
+  throw StateError('No HubProvider<$T> found in context.');
+}
+```
+
+**No dependency**: Widget won't rebuild when Hub changes. Use in callbacks.
+
+**Key Difference:**
+- `dependOnInheritedWidgetOfExactType` → creates dependency
+- `getInheritedWidgetOfExactType` → no dependency
+
+---
+
+### 6. BuildContext Extensions
+
+**Location**: `lib/src/extensions/build_context_extension.dart`
+
+#### Purpose
+Convenience methods for accessing Hubs.
+
+```dart
+extension HubBuildContextExtension on BuildContext {
+  T read<T extends Hub>() => HubProvider.read<T>(this);
+}
+```
+
+**Usage:**
+```dart
+// Instead of:
+HubProvider.read<CounterHub>(context).increment();
+
+// Write:
+context.read<CounterHub>().increment();
+```
+
+---
+
+### 7. MultiHubProvider - Multiple Hubs
+
+**Location**: `lib/src/widgets/multi_hub_provider.dart`
+
+#### Purpose
+Provide multiple Hubs without nesting.
+
+```dart
+class MultiHubProvider extends StatelessWidget {
+  final List<Hub Function()> hubs;
+  final Widget child;
+  
+  @override
+  Widget build(BuildContext context) {
+    Widget current = child;
+    
+    // Wrap in reverse order
+    for (int i = hubs.length - 1; i >= 0; i--) {
+      current = _HubProviderWrapper(
+        create: hubs[i],
+        child: current,
+      );
+    }
+    
+    return current;
+  }
+}
+```
+
+**How it works:**
+1. Creates a chain of `_HubProviderWrapper` widgets
+2. Each wrapper manages one Hub
+3. Uses dynamic `_InheritedHubDynamic` for type flexibility
+
+**Dynamic Type Handling:**
+Since we don't know the Hub types at compile time, `MultiHubProvider` uses a dynamic `InheritedWidget` and runtime type checking.
+
+---
+
+### 8. ReactiveSubscriber Interface
+
+**Location**: `lib/src/core/reactive_subscriber.dart`
+
+#### Purpose
+Decouples Pipe from Flutter's Element implementation.
+
+```dart
+abstract class ReactiveSubscriber {
+  void markNeedsBuild();
+  bool get mounted;
+}
+```
+
+**Why this exists:**
+- `Pipe` doesn't need to import Flutter's Element
+- Testability: Can mock subscribers
+- Flexibility: Any class can implement this interface
+
+**Implementation:**
+Both `SinkElement` and `WellElement` implement this interface, allowing Pipes to notify them without knowing they're Flutter elements.
 
 ---
 

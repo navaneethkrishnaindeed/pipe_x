@@ -27,14 +27,29 @@ class Pipe<T> {
   bool _autoDispose;
   bool _isRegisteredWithController = false;
 
-  /// Creates a [Pipe] with an initial value
+  /// Creates a [Pipe] with an initial value.
   ///
-  /// [autoDispose] when true, automatically disposes this pipe when the last
-  /// subscriber detaches. Defaults to true for standalone pipes (not in a Hub),
-  /// and false for pipes in a Hub (which manages disposal).
+  /// - [autoDispose]: Automatically disposes the pipe when the last subscriber
+  ///   detaches. Defaults to true for standalone pipes (not part of a Hub),
+  ///   and false for pipes within a Hub, which handles disposal for you.
   ///
-  /// If created inside a [Hub] constructor, the pipe is automatically
-  /// registered for disposal - no manual registration needed!
+  /// ### Examples:
+  /// 
+  /// **Standalone Pipe:**
+  /// ```dart
+  /// final countPipe = Pipe<int>(0);
+  /// countPipe.value = 5; // Updates and notifies subscribers
+  /// ```
+  ///
+  /// **Pipe in a Hub:**
+  /// ```dart
+  /// class MyHub extends Hub {
+  ///   late final count = Pipe<int>(0);
+  /// }
+  /// ```
+  ///
+  /// When created inside a [Hub] constructor, the pipe is automatically
+  /// registered for disposal, eliminating the need for manual registration.
   Pipe(
     this._value, {
     bool? autoDispose,

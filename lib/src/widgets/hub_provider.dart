@@ -25,7 +25,22 @@ class HubProvider<T extends Hub> extends StatefulWidget {
 
   /// The widget tree that will have access to the hub
   final Widget child;
-
+  /// 🎉 Constructs a [HubProvider] widget
+  ///
+  /// This constructor creates a [HubProvider] that instantiates a hub of type `T`, 
+  /// manages its lifecycle, and makes it available to all descendant widgets.
+  ///
+  /// The [create] parameter is a factory function used to create the hub.
+  ///
+  /// The [child] parameter is the widget tree that requires access to the hub.
+  ///
+  /// Example:
+  /// ```dart
+  /// HubProvider<CounterHub>(
+  ///   create: () => CounterHub(),  // 🚀 Hub creation
+  ///   child: MyApp(),              // 🌳 Widget tree with hub access
+  /// )
+  /// ```
   const HubProvider({
     required this.create,
     required this.child,

@@ -27,6 +27,54 @@ class Sink<T> extends Widget {
   /// This function is called whenever the pipe's value changes.
   /// The [value] parameter contains the current value of the pipe.
   final Widget Function(BuildContext context, T value) builder;
+/// 🌿 **Sink**
+
+/// [Sink] is a widget designed to build only when the [Pipe] it subscribes to changes.
+/// It provides a fine-tuned control over widget rebuilds, ensuring efficiency and
+/// performance optimization in Flutter applications.
+
+/// ### 🎉 Features
+/// - **Automatic Rebuild**: Automatically rebuilds when the subscribed [Pipe]'s value changes.
+/// - **Fine-Grained Control**: Only the widget portion wrapped by [Sink] rebuilds, not the entire tree.
+/// - **Easy Integration**: Simply plug [Pipe] and a builder to create reactive UIs effortlessly.
+/// - **Minimalistic Design**: Lightweight and designed to keep boilerplate to a minimum.
+
+/// ### 🚀 Example Usage
+
+/// **Basic Example:**
+/// ```dart
+/// Sink<int>(
+///   pipe: hub.count, // Attach to a Pipe
+///   builder: (context, value) => Text('Count: $value'), // Use Pipe value
+/// )
+/// ```
+
+/// **In a Widget Tree:**
+/// ```dart
+/// Column(
+///   children: [
+///     Text('Title'),
+///     Sink<String>(
+///       pipe: hub.title, // Reacts when title changes
+///       builder: (context, value) => Text('Title: $value'),
+///     ),
+///     ElevatedButton(
+///       onPressed: () => hub.title.update('New Title'), // Update to trigger rebuild
+///       child: Text('Change Title'),
+///     ),
+///   ],
+/// )
+/// ```
+
+/// ### 📚 Best Practices
+/// - **Keep it Scoped**: Limit the widget tree within [Sink] to only those needing updates.
+/// - **Combine with Other Widgets**: Use alongside other reactive widgets like [Well] for complex UIs.
+/// - **Optimize Performance**: Avoid wrapping large widget trees unnecessarily.
+
+/// ### ⚠️ Notes
+/// - Ensure the [Pipe] provided is initialized before using in [Sink].
+/// - **Avoid Nesting**: Try to keep nesting minimal to maintain readability and performance.
+  // Start Generation Here
 
   const Sink({
     required this.pipe,

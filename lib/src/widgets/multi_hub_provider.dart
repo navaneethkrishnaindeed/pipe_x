@@ -41,39 +41,40 @@ class MultiHubProvider extends StatelessWidget {
 
   /// The widget tree that will have access to all hubs
   final Widget child;
-/// 🎉 Constructs a [MultiHubProvider] widget
-///
-/// This constructor creates a [MultiHubProvider] that provides multiple hubs
-/// at the same time, avoiding nested [HubProvider] widgets and simplifying
-/// the widget tree.
-///
-/// The [hubs] parameter is a list of factory functions used to create each hub.
-/// The order of hubs matters if dependencies exist between them.
-///
-/// The [child] parameter is the widget tree that requires access to all hubs.
-///
-/// Example:
-/// ```dart
-/// MultiHubProvider(
-///   hubs: [
-///     () => AuthHub(),    // First hub
-///     () => ThemeHub(),   // Second hub
-///     () => SettingsHub() // Third hub
-///   ],
-///   child: MyApp(),        // 🌳 Widget tree with hub access
-/// )
-/// ``` 
-  /// 🎉 Constructs a [MultiHubProvider] widget 
+
+  /// 🎉 Constructs a [MultiHubProvider] widget
+  ///
+  /// This constructor creates a [MultiHubProvider] that provides multiple hubs
+  /// at the same time, avoiding nested [HubProvider] widgets and simplifying
+  /// the widget tree.
+  ///
+  /// The [hubs] parameter is a list of factory functions used to create each hub.
+  /// The order of hubs matters if dependencies exist between them.
+  ///
+  /// The [child] parameter is the widget tree that requires access to all hubs.
+  ///
+  /// Example:
+  /// ```dart
+  /// MultiHubProvider(
+  ///   hubs: [
+  ///     () => AuthHub(),    // First hub
+  ///     () => ThemeHub(),   // Second hub
+  ///     () => SettingsHub() // Third hub
+  ///   ],
+  ///   child: MyApp(),        // 🌳 Widget tree with hub access
+  /// )
+  /// ```
+  /// 🎉 Constructs a [MultiHubProvider] widget
   ///
   /// This constructor creates a [MultiHubProvider] that manages multiple
   /// hubs simultaneously, reducing the complexity of nested `HubProvider` widgets.
   ///
   /// The [hubs] parameter is an ordered list of factory functions, where each
-  /// function returns a hub instance. The sequence of the factories in this list 
-  /// is important; if there are dependencies between hubs, ensure that they are 
+  /// function returns a hub instance. The sequence of the factories in this list
+  /// is important; if there are dependencies between hubs, ensure that they are
   /// ordered accordingly.
   ///
-  /// The [child] parameter is the part of the widget tree that requires access 
+  /// The [child] parameter is the part of the widget tree that requires access
   /// to all of the specified hubs.
   ///
   /// Example:

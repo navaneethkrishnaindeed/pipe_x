@@ -25,9 +25,10 @@ class HubProvider<T extends Hub> extends StatefulWidget {
 
   /// The widget tree that will have access to the hub
   final Widget child;
+
   /// 🎉 Constructs a [HubProvider] widget
   ///
-  /// This constructor creates a [HubProvider] that instantiates a hub of type `T`, 
+  /// This constructor creates a [HubProvider] that instantiates a hub of type `T`,
   /// manages its lifecycle, and makes it available to all descendant widgets.
   ///
   /// The [create] parameter is a factory function used to create the hub.

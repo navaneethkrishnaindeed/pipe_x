@@ -51,7 +51,7 @@ class Well extends Widget {
   /// - **Rebuild on Change**: Automatically rebuilds when any of the
   ///   subscribed pipes' values change.
   /// - **Simplification**: Avoids the complexity of nesting multiple [Sink] widgets.
-  /// - **Efficient Updates**: Encapsulates multiple [Pipe] subscriptions in one 
+  /// - **Efficient Updates**: Encapsulates multiple [Pipe] subscriptions in one
   ///   widget tree.
   ///
   /// ### 🚀 Example Usage

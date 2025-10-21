@@ -34,7 +34,7 @@ class Pipe<T> {
   ///   and false for pipes within a Hub, which handles disposal for you.
   ///
   /// ### Examples:
-  /// 
+  ///
   /// **Standalone Pipe:**
   /// ```dart
   /// final countPipe = Pipe<int>(0);

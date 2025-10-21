@@ -1,5 +1,10 @@
 # 🔧 Pipe State Management
 
+**PipeX** is a Flutter library designed for state management, utilizing pipeline architecture. It focuses on precise reactivity and streamlined code to enhance development.
+
+<img src="images/banner.png" alt="PipeX Logo" style="width: 100%;" />
+
+
 ## Complete Guide & Technical Documentation
 
 ---

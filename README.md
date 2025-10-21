@@ -5,6 +5,27 @@
 <img src="images/banner.png" alt="PipeX Logo" style="width: 100%;" />
 
 
+
+<!-- Start of Selection -->
+
+<p align="center">
+  <br>
+  <a href="https://pub.dev/packages/pipe_x">
+    <img src="https://img.shields.io/pub/v/pipe_x.svg" alt="pub package" />
+  </a>
+  <a href="https://github.com/navaneethkrishnaindeed/pipe_x">
+    <img src="https://img.shields.io/github/stars/navaneethkrishnaindeed/pipe_x?style=social" alt="GitHub" />
+  </a>
+  <a href="https://discord.gg/rWKewdGH">
+     <img src="https://img.shields.io/badge/Discord-Join%20Server-7289da?logo=discord&logoColor=white" alt="Discord" />
+  </a>
+  <br><br>
+</p>
+
+<!-- End of Selection -->
+
+
+
 ## Complete Guide & Technical Documentation
 
 ---

@@ -23,7 +23,20 @@
 </p>
 
 <!-- End of Selection -->
-
+<p align="center">
+  <b>
+    <span style="font-size:1.25em">
+      🚫 No Streams &nbsp; &nbsp;|&nbsp; &nbsp; 🚫 No Dependency Injection &nbsp; &nbsp;|&nbsp; &nbsp; 🚫 No Keys For Widget Updates
+    </span>
+  </b>
+  <br><br>
+  <span>
+    <i>
+      PipeX eliminates boilerplate.<br>
+      Just pure, fine-grained reactivity with Dart Object Manipulation and "Dart:ComponentElement" <br>
+     
+  </span>
+</p>
 
 
 ## Complete Guide & Technical Documentation

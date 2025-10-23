@@ -1,0 +1,27 @@
+name: state_benchmark
+description: Benchmark comparison between PipeX, Riverpod, and BLoC
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  pipe_x:
+    path: ../
+  flutter_bloc: ^8.1.3
+  flutter_riverpod: ^2.4.0
+  collection: ^1.18.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  benchmark_harness: ^2.2.2
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+

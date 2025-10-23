@@ -1,0 +1,13 @@
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    prefer_const_constructors: true
+    prefer_const_literals_to_create_immutables: true
+    avoid_print: false  # Allow print for benchmark output
+    
+analyzer:
+  exclude:
+    - build/**
+    - results/**
+

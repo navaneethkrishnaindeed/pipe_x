@@ -18,13 +18,13 @@ void main() {
   // Storage for results with multiple runs
   final Map<String, Map<String, List<BenchmarkResult>>> allResults = {};
 
-  // Configuration
-  const int warmupIterations = 50;
-  const int measurementIterations = 100;
+  // Configuration - Increased warmup to ensure fair JIT compilation
+  const int warmupIterations = 100; // More warmup for fair JIT
+  const int measurementIterations = 500;
   const int numberOfRuns = 5;
 
   // RANDOMIZE test order to eliminate order effects
-  final frameworks = ['BLoC', 'Riverpod', 'PipeX']..shuffle(math.Random(42));
+  final frameworks = ['BLoC', 'Riverpod', 'PipeX']..shuffle();
 
   print('\n🎲 Test execution order (randomized): ${frameworks.join(' → ')}\n');
 
@@ -156,8 +156,7 @@ void main() {
             tester,
             binding,
             framework,
-            burstSize: 100,
-            numberOfBursts: 10,
+            totalUpdates: 1000, // Fair test: 1000 sequential updates with pump
           );
           runs.add(result);
         }
@@ -231,23 +230,15 @@ Future<BenchmarkResult> _benchmarkSimpleCounter(
 
     // MEASUREMENT PHASE with verification
     final List<int> stateUpdateTimes = [];
-    final List<int> renderTimes = [];
     final stopwatch = Stopwatch();
 
     for (int i = 0; i < measurementIterations; i++) {
-      // Measure state update time using Stopwatch for precision
+      // Measure update-to-render time
       stopwatch.start();
       blocInstance.add(bloc.IncrementEvent());
-      await tester.idle();
-      stopwatch.stop();
-      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      // Measure render time
-      stopwatch.start();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
     }
 
@@ -266,7 +257,7 @@ Future<BenchmarkResult> _benchmarkSimpleCounter(
       framework: framework,
       category: 'Simple Counter',
       stateUpdateTimes: stateUpdateTimes,
-      renderTimes: renderTimes,
+      renderTimes: [],
     );
   } else if (framework == 'Riverpod') {
     final container = ProviderContainer();
@@ -293,21 +284,14 @@ Future<BenchmarkResult> _benchmarkSimpleCounter(
 
     // MEASUREMENT with verification
     final List<int> stateUpdateTimes = [];
-    final List<int> renderTimes = [];
     final stopwatch = Stopwatch();
 
     for (int i = 0; i < measurementIterations; i++) {
       stopwatch.start();
       container.read(riverpod.counterProvider.notifier).increment();
-      await tester.idle();
-      stopwatch.stop();
-      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      stopwatch.start();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
     }
 
@@ -326,7 +310,7 @@ Future<BenchmarkResult> _benchmarkSimpleCounter(
       framework: framework,
       category: 'Simple Counter',
       stateUpdateTimes: stateUpdateTimes,
-      renderTimes: renderTimes,
+      renderTimes: [],
     );
   } else {
     // PipeX
@@ -354,21 +338,14 @@ Future<BenchmarkResult> _benchmarkSimpleCounter(
 
     // MEASUREMENT with verification
     final List<int> stateUpdateTimes = [];
-    final List<int> renderTimes = [];
     final stopwatch = Stopwatch();
 
     for (int i = 0; i < measurementIterations; i++) {
       stopwatch.start();
       hub.increment();
-      await tester.idle();
-      stopwatch.stop();
-      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      stopwatch.start();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
     }
 
@@ -385,7 +362,7 @@ Future<BenchmarkResult> _benchmarkSimpleCounter(
       framework: framework,
       category: 'Simple Counter',
       stateUpdateTimes: stateUpdateTimes,
-      renderTimes: renderTimes,
+      renderTimes: [],
     );
   }
 }
@@ -399,7 +376,6 @@ Future<BenchmarkResult> _benchmarkMultiCounter(
   required int warmupRounds,
 }) async {
   final List<int> stateUpdateTimes = [];
-  final List<int> renderTimes = [];
 
   if (framework == 'BLoC') {
     final multiBloc = bloc.MultiCounterBloc(counterCount);
@@ -429,15 +405,9 @@ Future<BenchmarkResult> _benchmarkMultiCounter(
     for (int round = 0; round < rounds; round++) {
       stopwatch.start();
       multiBloc.increment(round % counterCount);
-      await tester.idle();
-      stopwatch.stop();
-      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      stopwatch.start();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
     }
 
@@ -452,7 +422,6 @@ Future<BenchmarkResult> _benchmarkMultiCounter(
           home: Scaffold(
             body: riverpod.RiverpodMultiCounterWidget(
               count: counterCount,
-              useIsolation: true, // Use FAIR implementation
             ),
           ),
         ),
@@ -475,15 +444,9 @@ Future<BenchmarkResult> _benchmarkMultiCounter(
 
       stopwatch.start();
       container.read(riverpod.individualCounterProvider(id).notifier).state++;
-      await tester.idle();
-      stopwatch.stop();
-      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      stopwatch.start();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
     }
 
@@ -519,15 +482,9 @@ Future<BenchmarkResult> _benchmarkMultiCounter(
 
       stopwatch.start();
       hub.increment(id);
-      await tester.idle();
-      stopwatch.stop();
-      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      stopwatch.start();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
     }
   }
@@ -536,7 +493,7 @@ Future<BenchmarkResult> _benchmarkMultiCounter(
     framework: framework,
     category: 'Multi-Counter',
     stateUpdateTimes: stateUpdateTimes,
-    renderTimes: renderTimes,
+    renderTimes: [],
   );
 }
 
@@ -548,7 +505,6 @@ Future<BenchmarkResult> _benchmarkComplexState(
   required int warmupIterations,
 }) async {
   final List<int> stateUpdateTimes = [];
-  final List<int> renderTimes = [];
 
   if (framework == 'BLoC') {
     final complexBloc = bloc.ComplexBloc();
@@ -583,15 +539,9 @@ Future<BenchmarkResult> _benchmarkComplexState(
         complexBloc.add(bloc.UpdatePercentageEvent(i * 0.5));
       }
 
-      await tester.idle();
-      stopwatch.stop();
-      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      stopwatch.start();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
     }
 
@@ -630,15 +580,9 @@ Future<BenchmarkResult> _benchmarkComplexState(
         notifier.updatePercentage(i * 0.5);
       }
 
-      await tester.idle();
-      stopwatch.stop();
-      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      stopwatch.start();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
     }
 
@@ -676,15 +620,9 @@ Future<BenchmarkResult> _benchmarkComplexState(
         hub.updatePercentage(i * 0.5);
       }
 
-      await tester.idle();
-      stopwatch.stop();
-      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      stopwatch.start();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      stateUpdateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
     }
   }
@@ -693,7 +631,7 @@ Future<BenchmarkResult> _benchmarkComplexState(
     framework: framework,
     category: 'Complex State',
     stateUpdateTimes: stateUpdateTimes,
-    renderTimes: renderTimes,
+    renderTimes: [],
   );
 }
 
@@ -701,12 +639,12 @@ Future<BenchmarkResult> _benchmarkStress(
   WidgetTester tester,
   IntegrationTestWidgetsFlutterBinding binding,
   String framework, {
-  required int burstSize,
-  required int numberOfBursts,
+  required int totalUpdates,
 }) async {
-  // Stress test: Burst of updates without waiting for render
-  final List<int> burstTimes = [];
-  final List<int> renderTimes = [];
+  // Stress test: Rapid sequential updates (measures real-world high-frequency throughput)
+  // Each update followed by pump (not idle) to measure actual render performance
+  final List<int> updateTimes = [];
+  final stopwatch = Stopwatch();
 
   if (framework == 'BLoC') {
     final blocInstance = bloc.CounterBloc();
@@ -719,30 +657,13 @@ Future<BenchmarkResult> _benchmarkStress(
       ),
     );
 
-    final stopwatch = Stopwatch();
-
-    for (int burst = 0; burst < numberOfBursts; burst++) {
+    for (int i = 0; i < totalUpdates; i++) {
       stopwatch.start();
-
-      // Send burst of updates
-      for (int i = 0; i < burstSize; i++) {
-        blocInstance.add(bloc.IncrementEvent());
-      }
-      await tester.idle(); // Let all events process
-
+      blocInstance.add(bloc.IncrementEvent());
+      await tester.pump(); // Just pump, no idle - fair comparison
       stopwatch.stop();
-      burstTimes.add(stopwatch.elapsedMicroseconds);
+      updateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
-
-      // Then render
-      stopwatch.start();
-      await tester.pump();
-      stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      // Small cooldown
-      await Future.delayed(const Duration(milliseconds: 10));
     }
 
     blocInstance.close();
@@ -757,27 +678,13 @@ Future<BenchmarkResult> _benchmarkStress(
       ),
     );
 
-    final stopwatch = Stopwatch();
-
-    for (int burst = 0; burst < numberOfBursts; burst++) {
+    for (int i = 0; i < totalUpdates; i++) {
       stopwatch.start();
-
-      for (int i = 0; i < burstSize; i++) {
-        container.read(riverpod.counterProvider.notifier).increment();
-      }
-      await tester.idle();
-
-      stopwatch.stop();
-      burstTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      stopwatch.start();
+      container.read(riverpod.counterProvider.notifier).increment();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      updateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
-
-      await Future.delayed(const Duration(milliseconds: 10));
     }
 
     container.dispose();
@@ -792,35 +699,21 @@ Future<BenchmarkResult> _benchmarkStress(
       ),
     );
 
-    final stopwatch = Stopwatch();
-
-    for (int burst = 0; burst < numberOfBursts; burst++) {
+    for (int i = 0; i < totalUpdates; i++) {
       stopwatch.start();
-
-      for (int i = 0; i < burstSize; i++) {
-        hub.increment();
-      }
-      await tester.idle();
-
-      stopwatch.stop();
-      burstTimes.add(stopwatch.elapsedMicroseconds);
-      stopwatch.reset();
-
-      stopwatch.start();
+      hub.increment();
       await tester.pump();
       stopwatch.stop();
-      renderTimes.add(stopwatch.elapsedMicroseconds);
+      updateTimes.add(stopwatch.elapsedMicroseconds);
       stopwatch.reset();
-
-      await Future.delayed(const Duration(milliseconds: 10));
     }
   }
 
   return BenchmarkResult(
     framework: framework,
     category: 'Stress Test',
-    stateUpdateTimes: burstTimes,
-    renderTimes: renderTimes,
+    stateUpdateTimes: updateTimes,
+    renderTimes: [], // Not tracking separate render times in this test
   );
 }
 
@@ -985,11 +878,6 @@ class BenchmarkResult {
           'stdDev': stdDevStateUpdate,
           'p95': p95StateUpdate,
         },
-        'render': {
-          'avg': avgRender,
-          'median': medianRender,
-          'stdDev': stdDevRender,
-        },
       };
 }
 
@@ -1042,34 +930,20 @@ void _printStatisticalSummary(
   print('─' * 80);
 
   // Aggregate per-run statistics (NOT raw measurements!)
-  // Each run has its own median/avg, we aggregate those
-  final runAvgStates = runs.map((r) => r.avgStateUpdate).toList();
+  // Each run has its own median, we aggregate those
   final runMedianStates = runs.map((r) => r.medianStateUpdate).toList();
   final runP95States = runs.map((r) => r.p95StateUpdate).toList();
 
-  final runAvgRenders = runs.map((r) => r.avgRender).toList();
-  final runMedianRenders = runs.map((r) => r.medianRender).toList();
-
   // Report median-of-medians (most robust)
   final medianState = _median(runMedianStates);
-  final medianRender = _median(runMedianRenders);
-
-  // Report average-of-averages with std dev across runs
-  final avgState = _average(runAvgStates);
-  final avgRender = _average(runAvgRenders);
   final stdDevAcrossRuns = _stdDev(runMedianStates); // Variability across runs
 
   // Report average P95
   final avgP95State = _average(runP95States);
 
-  print('🔄 State Update Performance:');
-  print('   Median (of run medians): ${medianState.toStringAsFixed(3)} ms');
-  print('   Average (of run avgs):   ${avgState.toStringAsFixed(3)} ms');
-  print('   95th percentile (avg):   ${avgP95State.toStringAsFixed(3)} ms');
-
-  print('\n🎨 Render Performance:');
-  print('   Median (of run medians): ${medianRender.toStringAsFixed(3)} ms');
-  print('   Average (of run avgs):   ${avgRender.toStringAsFixed(3)} ms');
+  print('🔄 State Update Performance (includes rendering):');
+  print('   Median: ${medianState.toStringAsFixed(3)} ms');
+  print('   P95 (worst case): ${avgP95State.toStringAsFixed(3)} ms');
 
   final cvAcrossRuns =
       medianState > 0 ? (stdDevAcrossRuns / medianState * 100).toDouble() : 0.0;
@@ -1095,6 +969,9 @@ void _printComprehensiveReport(
       '║' + ' ' * 15 + '🏆 BENCHMARK - STATISTICAL REPORT 🏆' + ' ' * 15 + '║');
   print('╚' + '═' * 88 + '╝');
   print('\n');
+  print('📌 Note: All tests use fair comparison methods (pump, not idle).');
+  print('   Results reflect real-world rendering performance.');
+  print('');
 
   for (final category in allResults.keys) {
     print('\n┌─ $category ${'─' * (86 - category.length)}');
@@ -1140,6 +1017,34 @@ void _printComprehensiveReport(
     print('└' + '─' * 88);
   }
 
+  // Calculate overall wins
+  print('\n┌─ Overall Summary ' + '─' * 69);
+  final wins = <String, int>{'BLoC': 0, 'Riverpod': 0, 'PipeX': 0};
+
+  for (final category in allResults.keys) {
+    final frameworkResults = allResults[category]!;
+    final frameworks = frameworkResults.keys.toList();
+    final rankings = <String, double>{};
+
+    for (final framework in frameworks) {
+      final runs = frameworkResults[framework]!;
+      final runMedians = runs.map((r) => r.medianStateUpdate).toList();
+      rankings[framework] = _median(runMedians);
+    }
+
+    final sorted = rankings.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+    if (sorted.isNotEmpty) {
+      wins[sorted.first.key] = (wins[sorted.first.key] ?? 0) + 1;
+    }
+  }
+
+  print('│');
+  wins.forEach((framework, count) {
+    print('│  $framework: $count wins');
+  });
+
+  print('└' + '─' * 88);
   print('\n');
 }
 

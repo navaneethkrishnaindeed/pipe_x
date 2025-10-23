@@ -341,41 +341,84 @@ class BlocCounterWidget extends StatelessWidget {
 
 class BlocMultiCounterWidget extends StatelessWidget {
   final int count;
-  const BlocMultiCounterWidget({super.key, required this.count});
+  final bool useOptimized;
+
+  const BlocMultiCounterWidget({
+    super.key,
+    required this.count,
+    this.useOptimized = true, // Default to fair/optimized implementation
+  });
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<MultiCounterBloc, MultiCounterState>(
-      builder: (context, state) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Text('BLoC Multi-Counter ($count)',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: List.generate(
-                    count,
-                    (i) => Chip(
-                      label: Text('${state.counters[i]}'),
-                      onDeleted: () =>
-                          context.read<MultiCounterBloc>().increment(i),
-                      deleteIcon: const Icon(Icons.add, size: 16),
-                    ),
+    if (useOptimized) {
+      // FAIR: Each counter uses BlocSelector (isolated rebuilds like Riverpod/PipeX)
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Text('BLoC Multi-Counter ($count) [Optimized]',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: List.generate(
+                  count,
+                  (i) => BlocSelector<MultiCounterBloc, MultiCounterState, int>(
+                    selector: (state) => state.counters[i] ?? 0,
+                    builder: (context, value) {
+                      return Chip(
+                        label: Text('$value'),
+                        onDeleted: () =>
+                            context.read<MultiCounterBloc>().increment(i),
+                        deleteIcon: const Icon(Icons.add, size: 16),
+                      );
+                    },
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    } else {
+      // LEGACY: BlocBuilder rebuilds ALL counters (unfair vs Riverpod/PipeX)
+      return BlocBuilder<MultiCounterBloc, MultiCounterState>(
+        builder: (context, state) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Text('BLoC Multi-Counter ($count) [Legacy]',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: List.generate(
+                      count,
+                      (i) => Chip(
+                        label: Text('${state.counters[i]}'),
+                        onDeleted: () =>
+                            context.read<MultiCounterBloc>().increment(i),
+                        deleteIcon: const Icon(Icons.add, size: 16),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
   }
 }
 

@@ -307,11 +307,10 @@ class BlocCounterWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => CounterBloc(),
-      child: BlocBuilder<CounterBloc, CounterState>(
-        builder: (context, state) {
-          return Column(
+    return BlocBuilder<CounterBloc, CounterState>(
+      builder: (context, state) {
+        return Center(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('BLoC: ${state.value}',
@@ -333,9 +332,9 @@ class BlocCounterWidget extends StatelessWidget {
                 ],
               ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -346,33 +345,36 @@ class BlocMultiCounterWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => MultiCounterBloc(count),
-      child: BlocBuilder<MultiCounterBloc, MultiCounterState>(
-        builder: (context, state) {
-          return Column(
-            children: [
-              Text('BLoC Multi-Counter ($count)',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: List.generate(
-                  count,
-                  (i) => Chip(
-                    label: Text('${state.counters[i]}'),
-                    onDeleted: () =>
-                        context.read<MultiCounterBloc>().increment(i),
-                    deleteIcon: const Icon(Icons.add, size: 16),
+    return BlocBuilder<MultiCounterBloc, MultiCounterState>(
+      builder: (context, state) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Text('BLoC Multi-Counter ($count)',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: List.generate(
+                    count,
+                    (i) => Chip(
+                      label: Text('${state.counters[i]}'),
+                      onDeleted: () =>
+                          context.read<MultiCounterBloc>().increment(i),
+                      deleteIcon: const Icon(Icons.add, size: 16),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
-      ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -382,27 +384,41 @@ class BlocComplexWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => ComplexBloc(),
-      child: BlocBuilder<ComplexBloc, ComplexState>(
-        builder: (context, state) {
-          return Column(
-            children: [
-              Text('BLoC Complex: ${state.data.text}',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
-              Text('Number: ${state.data.number}'),
-              Text('Percentage: ${state.data.percentage.toStringAsFixed(2)}%'),
-              ElevatedButton(
-                onPressed: () => context
-                    .read<ComplexBloc>()
-                    .add(UpdateNumberEvent(state.data.number + 1)),
-                child: const Text('Update'),
+    return BlocBuilder<ComplexBloc, ComplexState>(
+      builder: (context, state) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('BLoC Complex: ${state.data.text}',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text('Number: ${state.data.number}'),
+                    const SizedBox(height: 4),
+                    Text(
+                        'Percentage: ${state.data.percentage.toStringAsFixed(2)}%'),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.update, size: 18),
+                      onPressed: () => context
+                          .read<ComplexBloc>()
+                          .add(UpdateNumberEvent(state.data.number + 1)),
+                      label: const Text('Update'),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          );
-        },
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -412,64 +428,94 @@ class BlocDerivedStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => DerivedStateBloc(),
-      child: BlocBuilder<DerivedStateBloc, DerivedState>(
-        builder: (context, state) {
-          return Column(
-            children: [
-              const Text(
-                'BLoC Derived State (Computed in State)',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Base: ${state.baseCount}',
-                          style: const TextStyle(fontSize: 14)),
-                      Text('Double: ${state.doubleCount}',
-                          style: const TextStyle(fontSize: 14)),
-                      Text('Square: ${state.squareCount}',
-                          style: const TextStyle(fontSize: 14)),
-                      Text('Is Even: ${state.isEven}',
-                          style: const TextStyle(fontSize: 14)),
-                      Text('Factorial: ${state.factorial}',
-                          style: const TextStyle(fontSize: 14)),
-                      const Divider(),
-                      Text('Summary: ${state.summary}',
-                          style: const TextStyle(
-                              fontSize: 12, fontStyle: FontStyle.italic)),
-                    ],
+    return BlocBuilder<DerivedStateBloc, DerivedState>(
+      builder: (context, state) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                const Text(
+                  'BLoC Derived State (Computed in State)',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                            'Base', '${state.baseCount}', Icons.looks_one),
+                        const SizedBox(height: 8),
+                        _buildInfoRow(
+                            'Double', '${state.doubleCount}', Icons.looks_two),
+                        const SizedBox(height: 8),
+                        _buildInfoRow('Square', '${state.squareCount}',
+                            Icons.crop_square),
+                        const SizedBox(height: 8),
+                        _buildInfoRow(
+                            'Is Even', '${state.isEven}', Icons.check_circle),
+                        const SizedBox(height: 8),
+                        _buildInfoRow(
+                            'Factorial', '${state.factorial}', Icons.calculate),
+                        const Divider(height: 24),
+                        Row(
+                          children: [
+                            Icon(Icons.summarize,
+                                size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(state.summary,
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontStyle: FontStyle.italic)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ElevatedButton(
-                    onPressed: () => context
-                        .read<DerivedStateBloc>()
-                        .add(IncrementDerivedEvent()),
-                    child: const Text('Increment Base'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () => context
-                        .read<DerivedStateBloc>()
-                        .add(ResetDerivedEvent()),
-                    child: const Text('Reset'),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.add, size: 18),
+                      onPressed: () => context
+                          .read<DerivedStateBloc>()
+                          .add(IncrementDerivedEvent()),
+                      label: const Text('Increment'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.refresh, size: 18),
+                      onPressed: () => context
+                          .read<DerivedStateBloc>()
+                          .add(ResetDerivedEvent()),
+                      label: const Text('Reset'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.blue),
+        const SizedBox(width: 8),
+        Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(value, style: const TextStyle(fontSize: 14)),
+      ],
     );
   }
 }
@@ -479,55 +525,95 @@ class BlocAsyncSearchWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => SearchBloc(),
-      child: BlocBuilder<SearchBloc, SearchState>(
-        builder: (context, state) {
-          return Column(
-            children: [
-              const Text(
-                'BLoC Complex Async Flow (Debounced Search)',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Search',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.search),
+    return BlocBuilder<SearchBloc, SearchState>(
+      builder: (context, state) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                const Text(
+                  'BLoC Complex Async Flow (Debounced Search)',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                onChanged: (value) =>
-                    context.read<SearchBloc>().add(SearchEvent(value)),
-              ),
-              const SizedBox(height: 12),
-              if (state.isLoading)
-                const CircularProgressIndicator()
-              else if (state.error != null)
-                Text('Error: ${state.error}',
-                    style: const TextStyle(color: Colors.red))
-              else if (state.results.isNotEmpty)
-                Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Search',
+                    hintText: 'Type to search...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.grey[50],
                   ),
-                  child: ListView.builder(
-                    itemCount: state.results.length,
-                    itemBuilder: (context, index) {
-                      return ListTile(
-                        dense: true,
-                        title: Text(state.results[index]),
-                      );
-                    },
+                  onChanged: (value) =>
+                      context.read<SearchBloc>().add(SearchEvent(value)),
+                ),
+                const SizedBox(height: 16),
+                if (state.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: CircularProgressIndicator(),
+                  )
+                else if (state.error != null)
+                  Card(
+                    color: Colors.red[50],
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red[700]),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text('Error: ${state.error}',
+                                style: TextStyle(color: Colors.red[700])),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (state.results.isNotEmpty)
+                  Card(
+                    elevation: 4,
+                    child: Container(
+                      height: 200,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListView.builder(
+                        itemCount: state.results.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            leading: CircleAvatar(
+                              child: Text('${index + 1}'),
+                            ),
+                            title: Text(state.results[index]),
+                            trailing:
+                                const Icon(Icons.arrow_forward_ios, size: 16),
+                          );
+                        },
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      children: [
+                        Icon(Icons.search, size: 48, color: Colors.grey[400]),
+                        const SizedBox(height: 8),
+                        Text('Type to search...',
+                            style: TextStyle(color: Colors.grey[600])),
+                      ],
+                    ),
                   ),
-                )
-              else
-                const Text('Type to search...'),
-            ],
-          );
-        },
-      ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

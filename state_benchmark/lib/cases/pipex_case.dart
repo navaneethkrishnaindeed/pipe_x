@@ -185,38 +185,33 @@ class PipeXCounterWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HubProvider<CounterHub>(
-      create: () => CounterHub(),
-      child: Builder(
-        builder: (context) {
-          final hub = HubProvider.read<CounterHub>(context);
-          return Column(
+    final hub = HubProvider.read<CounterHub>(context);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Sink<int>(
+            pipe: hub.count,
+            builder: (context, value) {
+              return Text('PipeX: $value',
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold));
+            },
+          ),
+          Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Sink<int>(
-                pipe: hub.count,
-                builder: (context, value) {
-                  return Text('PipeX: $value',
-                      style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold));
-                },
+              IconButton(
+                icon: const Icon(Icons.remove),
+                onPressed: hub.decrement,
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove),
-                    onPressed: hub.decrement,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: hub.increment,
-                  ),
-                ],
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: hub.increment,
               ),
             ],
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -228,37 +223,36 @@ class PipeXMultiCounterWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HubProvider<MultiCounterHub>(
-      create: () => MultiCounterHub(count),
-      child: Builder(
-        builder: (context) {
-          final hub = HubProvider.read<MultiCounterHub>(context);
-          return Column(
-            children: [
-              Text('PipeX Multi-Counter ($count)',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: List.generate(
-                  count,
-                  (i) => Sink<int>(
-                    pipe: hub.counters[i]!,
-                    builder: (context, value) {
-                      return Chip(
-                        label: Text('$value'),
-                        onDeleted: () => hub.increment(i),
-                        deleteIcon: const Icon(Icons.add, size: 16),
-                      );
-                    },
-                  ),
+    final hub = HubProvider.read<MultiCounterHub>(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Text('PipeX Multi-Counter ($count)',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: List.generate(
+                count,
+                (i) => Sink<int>(
+                  pipe: hub.counters[i]!,
+                  builder: (context, value) {
+                    return Chip(
+                      label: Text('$value'),
+                      onDeleted: () => hub.increment(i),
+                      deleteIcon: const Icon(Icons.add, size: 16),
+                    );
+                  },
                 ),
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -269,35 +263,44 @@ class PipeXComplexWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HubProvider<ComplexHub>(
-      create: () => ComplexHub(),
-      child: Builder(
-        builder: (context) {
-          final hub = HubProvider.read<ComplexHub>(context);
-          return Column(
-            children: [
-              Well(
-                pipes: [hub.text, hub.number, hub.percentage],
-                builder: (context) {
-                  return Column(
-                    children: [
-                      Text('PipeX Complex: ${hub.text.value}',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text('Number: ${hub.number.value}'),
-                      Text(
-                          'Percentage: ${hub.percentage.value.toStringAsFixed(2)}%'),
-                    ],
-                  );
-                },
-              ),
-              ElevatedButton(
-                onPressed: () => hub.updateNumber(hub.number.value + 1),
-                child: const Text('Update'),
-              ),
-            ],
-          );
-        },
+    final hub = HubProvider.read<ComplexHub>(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Card(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Well(
+                  pipes: [hub.text, hub.number, hub.percentage],
+                  builder: (context) {
+                    return Column(
+                      children: [
+                        Text('PipeX Complex: ${hub.text.value}',
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text('Number: ${hub.number.value}'),
+                        const SizedBox(height: 4),
+                        Text(
+                            'Percentage: ${hub.percentage.value.toStringAsFixed(2)}%'),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.update, size: 18),
+                  onPressed: () => hub.updateNumber(hub.number.value + 1),
+                  label: const Text('Update'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -308,73 +311,99 @@ class PipeXDerivedStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HubProvider<DerivedStateHub>(
-      create: () => DerivedStateHub(),
-      child: Builder(
-        builder: (context) {
-          final hub = HubProvider.read<DerivedStateHub>(context);
-          return Column(
-            children: [
-              const Text(
-                'PipeX Derived State (Manual Listeners)',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Well(
-                    pipes: [
-                      hub.baseCount,
-                      hub.doubleCount,
-                      hub.squareCount,
-                      hub.isEven,
-                      hub.factorial,
-                      hub.summary,
-                    ],
-                    builder: (context) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Base: ${hub.baseCount.value}',
-                              style: const TextStyle(fontSize: 14)),
-                          Text('Double: ${hub.doubleCount.value}',
-                              style: const TextStyle(fontSize: 14)),
-                          Text('Square: ${hub.squareCount.value}',
-                              style: const TextStyle(fontSize: 14)),
-                          Text('Is Even: ${hub.isEven.value}',
-                              style: const TextStyle(fontSize: 14)),
-                          Text('Factorial: ${hub.factorial.value}',
-                              style: const TextStyle(fontSize: 14)),
-                          const Divider(),
-                          Text('Summary: ${hub.summary.value}',
-                              style: const TextStyle(
-                                  fontSize: 12, fontStyle: FontStyle.italic)),
-                        ],
-                      );
-                    },
-                  ),
+    final hub = HubProvider.read<DerivedStateHub>(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            const Text(
+              'PipeX Derived State (Manual Listeners)',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Well(
+                  pipes: [
+                    hub.baseCount,
+                    hub.doubleCount,
+                    hub.squareCount,
+                    hub.isEven,
+                    hub.factorial,
+                    hub.summary,
+                  ],
+                  builder: (context) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(
+                            'Base', '${hub.baseCount.value}', Icons.looks_one),
+                        const SizedBox(height: 8),
+                        _buildInfoRow('Double', '${hub.doubleCount.value}',
+                            Icons.looks_two),
+                        const SizedBox(height: 8),
+                        _buildInfoRow('Square', '${hub.squareCount.value}',
+                            Icons.crop_square),
+                        const SizedBox(height: 8),
+                        _buildInfoRow('Is Even', '${hub.isEven.value}',
+                            Icons.check_circle),
+                        const SizedBox(height: 8),
+                        _buildInfoRow('Factorial', '${hub.factorial.value}',
+                            Icons.calculate),
+                        const Divider(height: 24),
+                        Row(
+                          children: [
+                            Icon(Icons.summarize,
+                                size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(hub.summary.value,
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontStyle: FontStyle.italic)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ElevatedButton(
-                    onPressed: hub.increment,
-                    child: const Text('Increment Base'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: hub.reset,
-                    child: const Text('Reset'),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.add, size: 18),
+                  onPressed: hub.increment,
+                  label: const Text('Increment'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.refresh, size: 18),
+                  onPressed: hub.reset,
+                  label: const Text('Reset'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.blue),
+        const SizedBox(width: 8),
+        Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(value, style: const TextStyle(fontSize: 14)),
+      ],
     );
   }
 }

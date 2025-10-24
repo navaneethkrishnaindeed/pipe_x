@@ -38,12 +38,33 @@
   </span>
 </p>
 
+<p align="center">
+  <a href="state_benchmark/README.md">
+    <img 
+      src="https://img.shields.io/badge/📊_Read_Full_Benchmark_Report-Click_Here-blue?style=for-the-badge&logo=github" 
+      alt="View Full Benchmark Report"
+      style="
+        padding: 14px 40px;
+        background: linear-gradient(90deg, #1976d2 0%, #64b5f6 100%);
+        border-radius: 15px;
+        box-shadow: 0 6px 24px rgba(25,118,210,0.16);
+        margin: 20px 0;
+        display: inline-block;
+      "
+    />
+  </a>
+</p>
+
+</div>
+
+---
 
 ## Complete Guide & Technical Documentation
 
 ---
 
 ## Table of Contents
+
 
 1. [What is Pipe?](#what-is-pipe)
 2. [Philosophy & Core Principles](#philosophy--core-principles)

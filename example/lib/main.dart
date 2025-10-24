@@ -79,6 +79,28 @@ class MyApp extends StatelessWidget {
             child: const MultiHubProviderExample(),
           ),
         );
+      case '/hub-provider-value':
+        // Pre-create the hub instance
+        final preCreatedHub = ThemeHub();
+        return MaterialPageRoute(
+          builder: (_) => HubProvider<ThemeHub>.value(
+            value: preCreatedHub,
+            child: const HubProviderValueExample(),
+          ),
+        );
+      case '/multi-hub-provider-value':
+        // Pre-create hub instances
+        final authHub = AuthHub();
+        final settingsHub = SettingsHub();
+        return MaterialPageRoute(
+          builder: (_) => MultiHubProvider(
+            hubs: [
+              authHub, // Existing instance
+              settingsHub, // Existing instance
+            ],
+            child: const MultiHubProviderValueExample(),
+          ),
+        );
       case '/scoped-vs-global':
         return MaterialPageRoute(
           builder: (_) => HubProvider(
@@ -146,6 +168,10 @@ class ExamplesListScreen extends StatelessWidget {
           _buildSection(context, '🏗️ Dependency Injection', const [
             _Example('HubProvider Basics', '/hub-provider'),
             _Example('MultiHubProvider', '/multi-hub-provider'),
+            _Example('HubProvider.value (External Lifecycle)',
+                '/hub-provider-value'),
+            _Example(
+                'MultiHubProvider with Values', '/multi-hub-provider-value'),
             _Example('Scoped vs Global', '/scoped-vs-global'),
           ]),
           _buildSection(context, '⚡ Advanced Patterns', const [
@@ -793,6 +819,482 @@ class MultiHubProviderExample extends StatelessWidget {
                   ),
                 );
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// EXAMPLE 8.1: HubProvider.value (External Lifecycle)
+// ============================================================================
+//
+// Use HubProvider.value when you want to manage the hub's lifecycle yourself.
+// The hub is NOT automatically disposed when the provider is removed.
+//
+// Use cases:
+// - Share a hub instance across multiple routes
+// - When you need to keep state alive beyond widget lifecycle
+// - Integration with existing dependency injection systems
+// - Testing scenarios where you provide mock instances
+// ============================================================================
+
+class HubProviderValueExample extends StatefulWidget {
+  const HubProviderValueExample({super.key});
+
+  @override
+  State<HubProviderValueExample> createState() =>
+      _HubProviderValueExampleState();
+}
+
+class _HubProviderValueExampleState extends State<HubProviderValueExample> {
+  int _toggleCount = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Sink(
+      pipe: context.read<ThemeHub>().isDark,
+      builder: (context, isDark) {
+        return MaterialApp(
+          theme: isDark ? ThemeData.dark() : ThemeData.light(),
+          home: Scaffold(
+            appBar: AppBar(
+              title: const Text('HubProvider.value Example'),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Info card
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline,
+                                  color: Colors.orange.shade700),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'HubProvider.value',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'This example uses HubProvider.value constructor.\n\n'
+                            '✅ Hub was created BEFORE the provider\n'
+                            '✅ You manage the lifecycle (not auto-disposed)\n'
+                            '✅ Perfect for sharing state across routes\n'
+                            '✅ Useful for testing with mock instances',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Theme toggle
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Text(
+                            isDark ? '🌙 Dark Mode' : '☀️ Light Mode',
+                            style: const TextStyle(fontSize: 32),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Toggled $_toggleCount times',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() => _toggleCount++);
+                              context.read<ThemeHub>().toggle();
+                            },
+                            icon: const Icon(Icons.brightness_6),
+                            label: const Text('Toggle Theme'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Code example
+                  Card(
+                    child: const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '📝 How this example was created:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            '// 1. Create the hub FIRST\n'
+                            'final myHub = ThemeHub();\n\n'
+                            '// 2. Provide it using .value\n'
+                            'HubProvider<ThemeHub>.value(\n'
+                            '  value: myHub,  // Pass existing instance\n'
+                            '  child: MyApp(),\n'
+                            ')\n\n'
+                            '// 3. You must dispose it manually\n'
+                            '// when you\'re done:\n'
+                            'myHub.dispose();',
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Comparison
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'HubProvider.create vs .value',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildComparisonRow(
+                            'Lifecycle Management',
+                            'Automatic',
+                            'Manual',
+                          ),
+                          _buildComparisonRow(
+                            'Auto-dispose',
+                            'Yes ✅',
+                            'No ❌',
+                          ),
+                          _buildComparisonRow(
+                            'Created',
+                            'By provider',
+                            'Before provider',
+                          ),
+                          _buildComparisonRow(
+                            'Use case',
+                            'Most cases',
+                            'Shared state',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildComparisonRow(String label, String create, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    create,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    value,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// EXAMPLE 8.2: MultiHubProvider with Existing Instances
+// ============================================================================
+//
+// MultiHubProvider can accept both:
+// - Factory functions: () => MyHub() (will be created and disposed)
+// - Hub instances: myHub (will NOT be disposed)
+//
+// Mix and match as needed for your use case!
+// ============================================================================
+
+class MultiHubProviderValueExample extends StatelessWidget {
+  const MultiHubProviderValueExample({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('MultiHubProvider with Values'),
+        backgroundColor: Colors.teal.shade700,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Info card
+            Card(
+              color: Colors.teal.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.layers, color: Colors.teal.shade700),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Pre-created Hub Instances',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Both hubs in this example were created BEFORE '
+                      'the MultiHubProvider:\n\n'
+                      '✅ Full control over initialization\n'
+                      '✅ Can configure hubs before providing them\n'
+                      '✅ Easy to test with dependency injection\n'
+                      '✅ You manage disposal manually',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Auth Hub section
+            Well(
+              pipes: [
+                context.read<AuthHub>().isLoggedIn,
+                context.read<AuthHub>().username,
+              ],
+              builder: (context) {
+                final auth = context.read<AuthHub>();
+                return Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.account_circle,
+                              color: auth.isLoggedIn.value
+                                  ? Colors.green
+                                  : Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Auth Hub (Pre-created)',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        Text(
+                          'Status: ${auth.isLoggedIn.value ? "Logged In ✅" : "Logged Out ❌"}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        Text(
+                          'User: ${auth.username.value}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            if (auth.isLoggedIn.value) {
+                              auth.logout();
+                            } else {
+                              auth.login('Alice');
+                            }
+                          },
+                          icon: Icon(
+                            auth.isLoggedIn.value ? Icons.logout : Icons.login,
+                          ),
+                          label: Text(
+                            auth.isLoggedIn.value ? 'Logout' : 'Login',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Settings Hub section
+            Sink<double>(
+              pipe: context.read<SettingsHub>().fontSize,
+              builder: (context, fontSize) {
+                return Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.settings, color: Colors.blue),
+                            SizedBox(width: 8),
+                            Text(
+                              'Settings Hub (Pre-created)',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        Text(
+                          'Font Size: ${fontSize.toInt()}px',
+                          style: TextStyle(fontSize: fontSize),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () => context
+                                  .read<SettingsHub>()
+                                  .decreaseFontSize(),
+                              icon: const Icon(Icons.text_decrease),
+                              label: const Text('Smaller'),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: () => context
+                                  .read<SettingsHub>()
+                                  .increaseFontSize(),
+                              icon: const Icon(Icons.text_increase),
+                              label: const Text('Larger'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+
+            // Code example
+            Card(
+              color: Colors.grey.shade100,
+              child: const Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '📝 Code for this example:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      '// 1. Create hub instances first\n'
+                      'final authHub = AuthHub();\n'
+                      'final settingsHub = SettingsHub();\n\n'
+                      '// 2. Pass them to MultiHubProvider\n'
+                      'MultiHubProvider(\n'
+                      '  hubs: [\n'
+                      '    authHub,        // Existing instance\n'
+                      '    settingsHub,    // Existing instance\n'
+                      '  ],\n'
+                      '  child: MyApp(),\n'
+                      ')\n\n'
+                      '// You can also mix factories and values:\n'
+                      'MultiHubProvider(\n'
+                      '  hubs: [\n'
+                      '    authHub,           // Existing (no dispose)\n'
+                      '    () => ThemeHub(),  // Factory (auto-dispose)\n'
+                      '  ],\n'
+                      '  child: MyApp(),\n'
+                      ')',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

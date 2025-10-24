@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'pipe.dart';
 
-/// 🌿 Reactive hub that manages state with automatic disposal
+/// Reactive hub that manages state with automatic disposal
 ///
 /// [Hub] provides lifecycle management and reactive state management
 /// for [Pipe] instances. Pipes created in the hub are automatically
@@ -11,7 +11,7 @@ import 'pipe.dart';
 /// Example:
 /// ```dart
 /// class CounterHub extends Hub {
-///   // ✨ Automatic registration - just create the Pipe!
+///   // Automatic registration - just create the Pipe!
 ///   late final count = Pipe(0);
 ///   late final name = Pipe('John');
 ///   late final user = Pipe(User(name: 'Jane', age: 25));

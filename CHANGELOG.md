@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0]
+- Added `HubProvider.value` to support externally-managed Hub lifecycles. Now you can pass pre-created Hub objects, allowing for global shared state, easier testing, or integration with DI systems. Hubs provided this way are **not** automatically disposed.
+- Added `MultiHubProvider` support for mixing existing hub instances (values) and hub factories, providing maximum flexibility for composition and dependency injection use-cases.
+- Examples and documentation updated to cover both features.
+- Added `state_benchmark` project with 3 tests benchmarking PipeX against Riverpod and BLoC. 
+- PipeX achieved best median update time in Basic and Complex tests; Riverpod slightly led in Multi-state. All frameworks performed highly, with PipeX and Riverpod having the most test wins.
+
 ## [1.2.1]
    Readme.md Updates
 

@@ -2,12 +2,12 @@ import 'package:flutter/widgets.dart';
 
 import '../core/hub.dart';
 
-/// 🌿 Provides multiple hubs at once without nesting
+/// Provides multiple hubs at once without nesting
 ///
 /// [MultiHubProvider] is a convenience widget that avoids the "pyramid of doom"
 /// when you need to provide multiple hubs at the same level.
 ///
-/// Without MultiHubProvider:
+/// Without MultiHubProvider (nested):
 /// ```dart
 /// HubProvider<AuthHub>(
 ///   create: () => AuthHub(),
@@ -21,7 +21,7 @@ import '../core/hub.dart';
 /// )
 /// ```
 ///
-/// With MultiHubProvider:
+/// With MultiHubProvider (flat):
 /// ```dart
 /// MultiHubProvider(
 ///   hubs: [
@@ -32,63 +32,66 @@ import '../core/hub.dart';
 ///   child: MyApp(),
 /// )
 /// ```
+///
+/// Using existing instances:
+/// ```dart
+/// final authHub = AuthHub();
+/// final themeHub = ThemeHub();
+/// MultiHubProvider(
+///   hubs: [
+///     authHub,
+///     themeHub,
+///   ],
+///   child: MyApp(),
+/// )
+/// ```
+///
+/// Mix factories and values:
+/// ```dart
+/// final authHub = AuthHub();
+/// MultiHubProvider(
+///   hubs: [
+///     authHub,              // Existing instance
+///     () => ThemeHub(),     // Factory function
+///   ],
+///   child: MyApp(),
+/// )
+/// ```
 class MultiHubProvider extends StatelessWidget {
-  /// List of hub factory functions
+  /// List of hubs or hub factory functions
   ///
-  /// Hubs are created in order (first to last). This can be important
+  /// Each item can be either:
+  /// - A [Hub] instance (will not be disposed)
+  /// - A [Hub Function()] factory (will be created and disposed)
+  ///
+  /// Hubs are provided in order (first to last). This can be important
   /// if one hub depends on another.
-  final List<Hub Function()> hubs;
+  final List<Object> hubs;
 
   /// The widget tree that will have access to all hubs
   final Widget child;
 
-  /// 🎉 Constructs a [MultiHubProvider] widget
-  ///
-  /// This constructor creates a [MultiHubProvider] that provides multiple hubs
-  /// at the same time, avoiding nested [HubProvider] widgets and simplifying
-  /// the widget tree.
-  ///
-  /// The [hubs] parameter is a list of factory functions used to create each hub.
-  /// The order of hubs matters if dependencies exist between them.
-  ///
-  /// The [child] parameter is the widget tree that requires access to all hubs.
-  ///
-  /// Example:
-  /// ```dart
-  /// MultiHubProvider(
-  ///   hubs: [
-  ///     () => AuthHub(),    // First hub
-  ///     () => ThemeHub(),   // Second hub
-  ///     () => SettingsHub() // Third hub
-  ///   ],
-  ///   child: MyApp(),        // 🌳 Widget tree with hub access
-  /// )
-  /// ```
-  /// 🎉 Constructs a [MultiHubProvider] widget
+  /// Constructs a [MultiHubProvider] widget
   ///
   /// This constructor creates a [MultiHubProvider] that manages multiple
-  /// hubs simultaneously, reducing the complexity of nested `HubProvider` widgets.
+  /// hubs simultaneously, reducing the complexity of nested [HubProvider] widgets.
   ///
-  /// The [hubs] parameter is an ordered list of factory functions, where each
-  /// function returns a hub instance. The sequence of the factories in this list
-  /// is important; if there are dependencies between hubs, ensure that they are
-  /// ordered accordingly.
-  ///
-  /// The [child] parameter is the part of the widget tree that requires access
-  /// to all of the specified hubs.
+  /// The [hubs] parameter accepts a list of either:
+  /// - Hub instances (for existing hubs that won't be disposed)
+  /// - Factory functions that return hubs (for new hubs that will be created and disposed)
   ///
   /// Example:
   /// ```dart
+  /// final existingHub = AuthHub();
   /// MultiHubProvider(
   ///   hubs: [
-  ///     () => AuthHub(),    // Creates an AuthHub
-  ///     () => ThemeHub(),   // Creates a ThemeHub
-  ///     () => SettingsHub() // Creates a SettingsHub
+  ///     existingHub,         // Existing hub instance
+  ///     () => ThemeHub(),    // Factory function
+  ///     () => SettingsHub(), // Factory function
   ///   ],
-  ///   child: MyApp(),        // 🌳 Provides access to multiple hubs for the widget tree
+  ///   child: MyApp(),
   /// )
   /// ```
-
   const MultiHubProvider({
     required this.hubs,
     required this.child,
@@ -103,7 +106,7 @@ class MultiHubProvider extends StatelessWidget {
     // so the first hub is the outermost
     for (int i = hubs.length - 1; i >= 0; i--) {
       current = _HubProviderWrapper(
-        create: hubs[i],
+        hubOrFactory: hubs[i],
         child: current,
       );
     }
@@ -116,11 +119,11 @@ class MultiHubProvider extends StatelessWidget {
 ///
 /// This is used internally by [MultiHubProvider] to wrap each hub.
 class _HubProviderWrapper extends StatefulWidget {
-  final Hub Function() create;
+  final Object hubOrFactory;
   final Widget child;
 
   const _HubProviderWrapper({
-    required this.create,
+    required this.hubOrFactory,
     required this.child,
   });
 
@@ -130,18 +133,62 @@ class _HubProviderWrapper extends StatefulWidget {
 
 class _HubProviderWrapperState extends State<_HubProviderWrapper> {
   late Hub _hub;
+  bool _shouldDispose = false;
 
   @override
   void initState() {
     super.initState();
-    _hub = widget.create();
-    // Remove hub from construction stack after creation
-    _hub.completeConstruction();
+
+    // Type-safe initialization with fail-safe checks
+    final hubOrFactory = widget.hubOrFactory;
+
+    if (hubOrFactory is Hub) {
+      // Value mode: use existing instance, don't manage lifecycle
+
+      // Validate that the hub is not disposed
+      if (hubOrFactory.disposed) {
+        throw FlutterError(
+          'Cannot provide a disposed hub to MultiHubProvider.\n'
+          'The hub of type ${hubOrFactory.runtimeType} has already been disposed.\n'
+          'Make sure you are not providing a hub that has been disposed, or create a new instance instead.',
+        );
+      }
+
+      _hub = hubOrFactory;
+      _shouldDispose = false;
+    } else if (hubOrFactory is Hub Function()) {
+      // Create mode: instantiate and manage lifecycle
+      _hub = hubOrFactory();
+      _shouldDispose = true;
+
+      // Validate that the created hub is valid
+      if (_hub.disposed) {
+        throw FlutterError(
+          'MultiHubProvider factory function returned a disposed hub.\n'
+          'The factory for ${_hub.runtimeType} returned a hub that has already been disposed.\n'
+          'Make sure your factory function creates a new hub instance.',
+        );
+      }
+
+      // Remove hub from construction stack after creation
+      _hub.completeConstruction();
+    } else {
+      throw FlutterError(
+        'Invalid type in MultiHubProvider.hubs list.\n'
+        'Each item in the hubs list must be either:\n'
+        '  - A Hub instance (e.g., MyHub())\n'
+        '  - A Hub factory function (e.g., () => MyHub())\n'
+        'Got: ${hubOrFactory.runtimeType}',
+      );
+    }
   }
 
   @override
   void dispose() {
-    _hub.dispose();
+    // Only dispose if we created the hub
+    if (_shouldDispose) {
+      _hub.dispose();
+    }
     super.dispose();
   }
 

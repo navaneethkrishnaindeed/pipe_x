@@ -5,7 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'hub.dart' show Hub;
 import 'reactive_subscriber.dart';
 
-/// 🌿 A reactive container that holds a value and notifies subscribers when it changes
+/// A reactive container that holds a value and notifies subscribers when it changes
 ///
 /// [Pipe] is the core primitive for reactive state management. When the value changes,
 /// all subscribed widgets rebuild automatically.

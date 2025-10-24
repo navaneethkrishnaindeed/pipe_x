@@ -1,4 +1,4 @@
-// 🌿 PipeX - A lightweight, reactive state management library for Flutter
+// PipeX - A lightweight, reactive state management library for Flutter
 //
 // PipeX provides fine-grained reactivity with minimal boilerplate. It works
 // directly with Flutter's Element tree to provide optimal performance.
@@ -15,35 +15,85 @@
 // ## Quick Start
 //
 // ```dart
-// // 1. Create a hub
+// // 1. Create a hub with pipes (automatic registration!)
 // class CounterHub extends Hub {
-//   late final Pipe<int> count;
-//
-//   CounterHub() {
-//     count = registerPipe(Pipe(0));
-//   }
+//   late final count = Pipe(0);  //  Auto-registered!
 //
 //   void increment() => count.value++;
+//   void decrement() => count.value--;
 // }
 //
-// // 2. Provide the hub
+// // 2. Provide the hub using HubProvider
 // HubProvider<CounterHub>(
-//   create: () => CounterHub(),
+//   create: () => CounterHub(),  // Provider manages lifecycle
 //   child: MyApp(),
 // )
 //
 // // 3. Use Sink to display reactive state
 // Sink<int>(
-//   pipe: hub.count,
+//   pipe: context.read<CounterHub>().count,
 //   builder: (context, value) => Text('Count: $value'),
 // )
 //
-// // 4. Call methods in callbacks
+// // 4. Update state in callbacks using read() (no rebuild dependency)
 // ElevatedButton(
 //   onPressed: () {
-//     HubProvider.read<CounterHub>(context).increment();
+//     context.read<CounterHub>().increment();
 //   },
 //   child: Text('+'),
+// )
+// ```
+//
+// ## HubProvider Access Methods
+//
+// ```dart
+// // HubProvider.of() - Creates dependency (rebuilds if hub instance changes)
+// final hub = HubProvider.of<CounterHub>(context);
+//
+// // HubProvider.read() - No dependency (use in callbacks)
+// final hub = HubProvider.read<CounterHub>(context);
+//
+// // Extension method - Same as read()
+// final hub = context.read<CounterHub>();
+// ```
+//
+// ## MultiHubProvider - Avoid Nesting
+//
+// ```dart
+// // Instead of nested providers:
+// HubProvider<AuthHub>(
+//   create: () => AuthHub(),
+//   child: HubProvider<ThemeHub>(
+//     create: () => ThemeHub(),
+//     child: MyApp(),
+//   ),
+// )
+//
+// // Use MultiHubProvider:
+// MultiHubProvider(
+//   hubs: [
+//     () => AuthHub(),    // Factory functions
+//     () => ThemeHub(),
+//     existingHub,        // Or existing instances
+//   ],
+//   child: MyApp(),
+// )
+// ```
+//
+// ## Well - Multiple Pipes Without Nesting
+//
+// ```dart
+// // Instead of nested Sinks:
+// Sink(pipe: hub.a, builder: (_,__) =>
+//   Sink(pipe: hub.b, builder: (_,__) =>
+//     Text('${hub.total}')
+//   )
+// )
+//
+// // Use Well:
+// Well(
+//   pipes: [hub.a, hub.b],
+//   builder: (context) => Text('Total: ${hub.total}'),
 // )
 // ```
 //

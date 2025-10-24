@@ -4,7 +4,7 @@ import '../core/pipe.dart';
 import '../core/reactive_subscriber.dart';
 import 'sink.dart';
 
-/// 🌿 A widget that subscribes to multiple [Pipe]s and rebuilds when any changes
+/// A widget that subscribes to multiple [Pipe]s and rebuilds when any changes
 ///
 /// [Well] allows you to listen to multiple pipes without
 /// nesting Sink widgets. This is perfect for displaying computed
@@ -41,20 +41,20 @@ class Well extends Widget {
   /// This function is called whenever ANY of the pipes' values change.
   final Widget Function(BuildContext context) builder;
 
-  /// 🌿 **Well**
+  /// **Well**
   ///
   /// [Well] is a widget that enables listening to multiple [Pipe]s at once
   /// without the need to nest multiple [Sink]s. This is perfect for situations
   /// where UI needs to be reactive based on the state of several [Pipe]s.
   ///
-  /// ### 🎉 Features
+  /// ### Features
   /// - **Rebuild on Change**: Automatically rebuilds when any of the
   ///   subscribed pipes' values change.
   /// - **Simplification**: Avoids the complexity of nesting multiple [Sink] widgets.
   /// - **Efficient Updates**: Encapsulates multiple [Pipe] subscriptions in one
   ///   widget tree.
   ///
-  /// ### 🚀 Example Usage
+  /// ### Example Usage
   ///
   /// **Basic Example:**
   /// ```dart
@@ -95,7 +95,7 @@ class Well extends Widget {
   /// )
   /// ```
   ///
-  /// ### 📚 Best Practices
+  /// ### Best Practices
   /// - **Limit UI to Dependencies**: Keep the widget tree inside the builder
   ///   minimal and only dependent on the values of the pipes.
   /// - **Combine with Other Widgets**: Use Well alongside other reactive widgets
@@ -103,11 +103,10 @@ class Well extends Widget {
   /// - **Monitor Performance**: Ensure the pipes list does not include pipes
   ///   unnecessarily to prevent excessive rebuilds.
   ///
-  /// ### ⚠️ Notes
+  /// ### Notes
   /// - Ensure each Pipe provided is initialized before use.
   /// - Consider the performance implications of rebuilding, especially with
   ///   complex widget trees.
-
   const Well({
     required this.pipes,
     required this.builder,
@@ -177,7 +176,7 @@ class WellElement extends ComponentElement implements ReactiveSubscriber {
     // Prevent nesting Sink or Well as direct child
     assert(
       child is! Sink && child is! Well,
-      '❌ Do not nest Sink or Well as the direct child!\n'
+      'Do not nest Sink or Well as the direct child!\n'
       'If you need multiple pipes, add them to the pipes list:\n'
       'Well(pipes: [pipe1, pipe2, pipe3], builder: ...)',
     );

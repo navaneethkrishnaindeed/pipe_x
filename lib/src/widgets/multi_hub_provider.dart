@@ -169,9 +169,6 @@ class _HubProviderWrapperState extends State<_HubProviderWrapper> {
           'Make sure your factory function creates a new hub instance.',
         );
       }
-
-      // Remove hub from construction stack after creation
-      _hub.completeConstruction();
     } else {
       throw FlutterError(
         'Invalid type in MultiHubProvider.hubs list.\n'

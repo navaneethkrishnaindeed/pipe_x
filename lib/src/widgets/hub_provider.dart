@@ -229,9 +229,6 @@ class _HubProviderState<T extends Hub> extends State<HubProvider<T>> {
           'Make sure your create function creates a new hub instance.',
         );
       }
-
-      // Remove hub from construction stack after creation
-      _hub.completeConstruction();
     } else {
       // Value mode: use existing instance, don't manage lifecycle
       _hub = widget._value!;

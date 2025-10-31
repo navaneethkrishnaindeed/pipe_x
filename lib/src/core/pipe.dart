@@ -44,32 +44,17 @@ class Pipe<T> {
   /// **Pipe in a Hub:**
   /// ```dart
   /// class MyHub extends Hub {
-  ///   late final count = Pipe<int>(0);
+  ///   late final count = pipe(0);  // Use Hub's pipe() method
   /// }
   /// ```
   ///
-  /// When created inside a [Hub] constructor, the pipe is automatically
-  /// registered for disposal, eliminating the need for manual registration.
+  /// When using pipes in a Hub, use the Hub's `pipe()` method for
+  /// automatic registration and disposal management.
   Pipe(
     this._value, {
     bool? autoDispose,
-  }) : _autoDispose = autoDispose ?? true {
-    // Default to auto-dispose for safety
-    // Auto-register with hub if we're in a hub context
-    _autoRegisterIfNeeded(this);
-  }
+  }) : _autoDispose = autoDispose ?? true;
 
-  /// Internal method to auto-register this pipe with current hub
-  static void _autoRegisterIfNeeded(Pipe pipe) {
-    final hub = Hub.current;
-    if (hub != null) {
-      hub.autoRegisterPipe(pipe);
-      pipe._isRegisteredWithController = true;
-      // Disable auto-dispose for hub-managed pipes
-      // They'll be disposed by the hub
-      pipe._autoDispose = false;
-    }
-  }
 
   /// The current value of this pipe
   ///
@@ -181,7 +166,23 @@ class Pipe<T> {
   void addListener(VoidCallback listener) => _listeners.add(listener);
 
   /// Removes a previously added listener
-  void removeListener(VoidCallback listener) => _listeners.remove(listener);
+  void removeListener(VoidCallback listener) {
+    _listeners.remove(listener);
+
+    // Auto-dispose if enabled, not managed by hub, and no more subscribers/listeners
+    if (_autoDispose &&
+        !_isRegisteredWithController &&
+        _subscribers.isEmpty &&
+        _listeners.isEmpty &&
+        !_disposed) {
+      scheduleMicrotask(() {
+        // Double-check conditions haven't changed
+        if (_subscribers.isEmpty && _listeners.isEmpty && !_disposed) {
+          dispose();
+        }
+      });
+    }
+  }
 
   /// Forces an update even if the value didn't change
   ///
@@ -222,4 +223,12 @@ class Pipe<T> {
 
   /// Whether this pipe is registered with a hub
   bool get isRegisteredWithController => _isRegisteredWithController;
+
+  /// Internal method to mark this pipe as registered with a hub
+  ///
+  /// This is called by Hub when a pipe is registered and should not be
+  /// called directly by user code.
+  set isRegisteredWithController(bool value) {
+    _isRegisteredWithController = value;
+  }
 }

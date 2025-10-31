@@ -251,5 +251,206 @@ void main() {
 
       pipe.dispose();
     });
+
+    testWidgets(
+        'standalone pipe with autoDispose should auto-dispose when last subscriber unmounts',
+        (tester) async {
+      // Create a standalone pipe with autoDispose enabled (default)
+      final pipe = Pipe<int>(0);
+      expect(pipe.autoDispose, true,
+          reason:
+              'Standalone pipes should have autoDispose enabled by default');
+      expect(pipe.disposed, false);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Sink<int>(
+            pipe: pipe,
+            builder: (context, value) => Text('$value'),
+          ),
+        ),
+      );
+
+      expect(pipe.subscriberCount, 1);
+      expect(pipe.disposed, false);
+
+      // Remove the widget (unmount the subscriber)
+      await tester.pumpWidget(const SizedBox());
+
+      // Wait for microtask to complete
+      await tester.pumpAndSettle();
+      await tester.idle();
+
+      // Check if pipe auto-disposed
+      expect(pipe.subscriberCount, 0);
+      expect(pipe.disposed, true,
+          reason:
+              'Standalone pipe with autoDispose should automatically dispose when last subscriber unmounts');
+    });
+
+    testWidgets('pipe with autoDispose=false should NOT auto-dispose',
+        (tester) async {
+      // Create a pipe with autoDispose disabled
+      final pipe = Pipe<int>(0, autoDispose: false);
+      expect(pipe.autoDispose, false);
+      expect(pipe.disposed, false);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Sink<int>(
+            pipe: pipe,
+            builder: (context, value) => Text('$value'),
+          ),
+        ),
+      );
+
+      expect(pipe.subscriberCount, 1);
+
+      // Remove the widget
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+      await tester.idle();
+
+      // Should NOT be disposed
+      expect(pipe.subscriberCount, 0);
+      expect(pipe.disposed, false,
+          reason:
+              'Pipe with autoDispose=false should not automatically dispose');
+
+      // Manual cleanup
+      pipe.dispose();
+    });
+
+    testWidgets('standalone pipe should NOT auto-dispose if it has listeners',
+        (tester) async {
+      // Create a standalone pipe with autoDispose enabled
+      final pipe = Pipe<int>(0);
+      expect(pipe.autoDispose, true);
+
+      // Add a listener
+      void listener() {}
+      pipe.addListener(listener);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Sink<int>(
+            pipe: pipe,
+            builder: (context, value) => Text('$value'),
+          ),
+        ),
+      );
+
+      expect(pipe.subscriberCount, 1);
+
+      // Remove the widget (subscriber unmounts)
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+      await tester.idle();
+
+      // Should NOT be disposed because listener still exists
+      expect(pipe.subscriberCount, 0);
+      expect(pipe.disposed, false,
+          reason: 'Pipe should not auto-dispose if listeners still exist');
+
+      // Remove listener and it should auto-dispose on next detach
+      // But there are no more subscribers, so we need to manually dispose
+      pipe.removeListener(listener);
+      pipe.dispose();
+    });
+
+    testWidgets(
+        'standalone pipe should auto-dispose when both subscribers and listeners are removed',
+        (tester) async {
+      // Create a standalone pipe
+      final pipe = Pipe<int>(0);
+      int listenerCallCount = 0;
+
+      void listener() {
+        listenerCallCount++;
+      }
+
+      pipe.addListener(listener);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Sink<int>(
+            pipe: pipe,
+            builder: (context, value) => Text('$value'),
+          ),
+        ),
+      );
+
+      expect(pipe.subscriberCount, 1);
+
+      // Update value to trigger listener
+      pipe.value = 5;
+      await tester.pump();
+      expect(listenerCallCount, 1);
+
+      // Remove listener first
+      pipe.removeListener(listener);
+
+      // Now remove the widget (subscriber unmounts)
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+      await tester.idle();
+
+      // Should auto-dispose now that both subscribers and listeners are empty
+      expect(pipe.subscriberCount, 0);
+      expect(pipe.disposed, true,
+          reason:
+              'Pipe should auto-dispose when both subscribers and listeners are empty');
+    });
+
+    testWidgets(
+        'comprehensive auto-dispose test: subscribers unmount, then listeners removed',
+        (tester) async {
+      // This test demonstrates the bug fix: removeListener now triggers auto-dispose
+      final pipe = Pipe<int>(0);
+      int listenerCallCount = 0;
+
+      void listener() {
+        listenerCallCount++;
+      }
+
+      pipe.addListener(listener);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Sink<int>(
+            pipe: pipe,
+            builder: (context, value) => Text('$value'),
+          ),
+        ),
+      );
+
+      expect(pipe.subscriberCount, 1);
+      expect(pipe.disposed, false);
+
+      // Update value
+      pipe.value = 5;
+      await tester.pump();
+      expect(listenerCallCount, 1);
+
+      // Widget unmounts (subscriber detaches)
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+      await tester.idle();
+
+      // Should NOT be disposed yet because listener still exists
+      expect(pipe.subscriberCount, 0);
+      expect(pipe.disposed, false,
+          reason: 'Pipe should not dispose while listener exists');
+
+      // Now remove the listener - THIS IS THE BUG FIX
+      // Before fix: removeListener didn't check for auto-dispose
+      // After fix: removeListener triggers auto-dispose check
+      pipe.removeListener(listener);
+      await Future.delayed(Duration.zero); // Wait for microtask
+
+      // Should NOW be disposed because both subscribers and listeners are empty
+      expect(pipe.disposed, true,
+          reason: 'Pipe should auto-dispose after last listener removed');
+    });
   });
 }

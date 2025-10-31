@@ -3,11 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pipe_x/pipe_x.dart';
 
 class CounterHub extends Hub {
-  late final Pipe<int> count;
-
-  CounterHub() {
-    count = Pipe(0);
-  }
+  late final count = pipe(0);
 
   void increment() {
     count.value++;
@@ -15,19 +11,11 @@ class CounterHub extends Hub {
 }
 
 class NameHub extends Hub {
-  late final Pipe<String> name;
-
-  NameHub() {
-    name = Pipe('test');
-  }
+  late final name = pipe('test');
 }
 
 class FlagHub extends Hub {
-  late final Pipe<bool> flag;
-
-  FlagHub() {
-    flag = Pipe(false);
-  }
+  late final flag = pipe(false);
 }
 
 void main() {
@@ -60,8 +48,6 @@ void main() {
     testWidgets('should provide hubs using instances', (tester) async {
       final counterHub = CounterHub();
       final nameHub = NameHub();
-      counterHub.completeConstruction();
-      nameHub.completeConstruction();
 
       await tester.pumpWidget(
         MaterialApp(
@@ -93,7 +79,6 @@ void main() {
 
     testWidgets('should mix factories and instances', (tester) async {
       final existingHub = CounterHub();
-      existingHub.completeConstruction();
 
       await tester.pumpWidget(
         MaterialApp(
@@ -161,8 +146,6 @@ void main() {
         (tester) async {
       final counterHub = CounterHub();
       final nameHub = NameHub();
-      counterHub.completeConstruction();
-      nameHub.completeConstruction();
 
       await tester.pumpWidget(
         MaterialApp(
@@ -258,7 +241,6 @@ void main() {
     testWidgets('should throw error if disposed hub is provided',
         (tester) async {
       final hub = CounterHub();
-      hub.completeConstruction();
       hub.dispose();
 
       await tester.pumpWidget(
@@ -281,7 +263,6 @@ void main() {
             hubs: [
               () {
                 final hub = CounterHub();
-                hub.completeConstruction();
                 hub.dispose();
                 return hub;
               },

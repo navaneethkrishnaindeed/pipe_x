@@ -3,11 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pipe_x/pipe_x.dart';
 
 class CounterHub extends Hub {
-  late final Pipe<int> count;
-
-  CounterHub() {
-    count = Pipe(0);
-  }
+  late final count = pipe(0);
 
   void increment() {
     count.value++;
@@ -15,11 +11,7 @@ class CounterHub extends Hub {
 }
 
 class NameHub extends Hub {
-  late final Pipe<String> name;
-
-  NameHub() {
-    name = Pipe('test');
-  }
+  late final name = pipe('test');
 
   void setName(String newName) {
     name.value = newName;
@@ -49,7 +41,6 @@ void main() {
 
     testWidgets('should provide hub using value constructor', (tester) async {
       final hub = CounterHub();
-      hub.completeConstruction();
 
       await tester.pumpWidget(
         MaterialApp(
@@ -100,7 +91,6 @@ void main() {
 
     testWidgets('should NOT dispose hub provided with value', (tester) async {
       final hub = CounterHub();
-      hub.completeConstruction();
 
       await tester.pumpWidget(
         MaterialApp(
@@ -235,7 +225,6 @@ void main() {
     testWidgets('should throw error if disposed hub is provided via value',
         (tester) async {
       final hub = CounterHub();
-      hub.completeConstruction();
       hub.dispose();
 
       await tester.pumpWidget(
@@ -257,7 +246,6 @@ void main() {
           home: HubProvider<CounterHub>(
             create: () {
               final hub = CounterHub();
-              hub.completeConstruction();
               hub.dispose();
               return hub;
             },

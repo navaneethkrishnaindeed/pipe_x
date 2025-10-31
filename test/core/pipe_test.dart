@@ -161,5 +161,50 @@ void main() {
       pipe1.dispose();
       pipe2.dispose();
     });
+
+    test('standalone pipe should auto-dispose when last listener is removed',
+        () async {
+      final pipe = Pipe<int>(0);
+      expect(pipe.autoDispose, true);
+      expect(pipe.disposed, false);
+
+      // Add a listener
+      void listener() {}
+      pipe.addListener(listener);
+
+      // Remove the listener
+      pipe.removeListener(listener);
+
+      // Wait for microtask to complete
+      await Future.delayed(Duration.zero);
+
+      // Should be auto-disposed
+      expect(pipe.disposed, true);
+    });
+
+    test('pipe with listeners should not auto-dispose until all removed',
+        () async {
+      final pipe = Pipe<int>(0);
+
+      void listener1() {}
+      void listener2() {}
+
+      pipe.addListener(listener1);
+      pipe.addListener(listener2);
+
+      // Remove first listener
+      pipe.removeListener(listener1);
+      await Future.delayed(Duration.zero);
+
+      // Should NOT be disposed yet
+      expect(pipe.disposed, false);
+
+      // Remove second listener
+      pipe.removeListener(listener2);
+      await Future.delayed(Duration.zero);
+
+      // Now should be disposed
+      expect(pipe.disposed, true);
+    });
   });
 }

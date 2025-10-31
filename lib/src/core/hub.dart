@@ -5,22 +5,21 @@ import 'pipe.dart';
 /// Reactive hub that manages state with automatic disposal
 ///
 /// [Hub] provides lifecycle management and reactive state management
-/// for [Pipe] instances. Pipes created in the hub are automatically
-/// registered and disposed - no manual registration needed!
+/// for [Pipe] instances. Use the [pipe] method to create pipes that are
+/// automatically registered and disposed with the hub.
 ///
 /// Example:
 /// ```dart
 /// class CounterHub extends Hub {
-///   // Automatic registration - just create the Pipe!
-///   late final count = Pipe(0);
-///   late final name = Pipe('John');
-///   late final user = Pipe(User(name: 'Jane', age: 25));
+///   // Use pipe() method to create and register pipes
+///   late final count = pipe(0);
+///   late final name = pipe('John');
+///   late final user = pipe(User(name: 'Jane', age: 25));
 ///
 ///   // Use getters for derived/computed values
 ///   bool get isEven => count.value % 2 == 0;
 ///   String get displayText => 'Count: ${count.value} (${isEven ? "Even" : "Odd"})';
 ///
-///   // No need for checkNotDisposed()! Pipe checks automatically
 ///   void increment() => count.value++;
 /// }
 /// ```
@@ -29,40 +28,8 @@ abstract class Hub {
   final Map<String, Pipe> _pipes = {};
   int _autoRegisterCounter = 0;
 
-  /// Stack of hubs currently being constructed (for auto-registration)
-  static final List<Hub> _constructionStack = [];
-
-  /// Creates a hub with auto-registration support for pipes
-  Hub() {
-    // Push this hub onto the stack during construction
-    _constructionStack.add(this);
-    // Subclass constructor runs here
-    // late final fields in the subclass will be initialized when first accessed
-    // and will find this hub in the stack
-  }
-
-  /// Internal: Completes hub construction
-  ///
-  /// This removes the hub from the construction stack so that
-  /// standalone pipes created afterwards won't be auto-registered.
-  ///
-  /// Called automatically by HubProvider. DO NOT call manually.
-  void completeConstruction() {
-    _constructionStack.remove(this);
-  }
-
-  /// Gets the hub currently being constructed, if any (used internally by Pipe)
-  static Hub? get current =>
-      _constructionStack.isEmpty ? null : _constructionStack.last;
-
-  /// Internal method for automatic pipe registration
-  void autoRegisterPipe(Pipe pipe) {
-    if (_disposed) {
-      throw StateError('Cannot register pipe on disposed hub');
-    }
-    final key = '_auto_${_autoRegisterCounter++}';
-    _pipes[key] = pipe;
-  }
+  /// Creates a hub
+  Hub();
 
   /// Whether this hub has been disposed
   bool get disposed => _disposed;
@@ -79,18 +46,20 @@ abstract class Hub {
     checkNotDisposed();
     final pipeKey = key ?? pipe.hashCode.toString();
     _pipes[pipeKey] = pipe;
+    // Mark the pipe as registered with a controller
+    pipe.isRegisteredWithController = true;
     return pipe;
   }
 
   /// Creates and registers a new [Pipe] with the given initial value
   ///
-  /// This is a convenience method that combines Pipe creation and registration.
-  /// Use this to reduce boilerplate:
+  /// This is the recommended way to create pipes in a Hub.
+  /// The pipe is automatically registered for disposal when the hub is disposed.
   ///
   /// ```dart
   /// class MyHub extends Hub {
-  ///   late final Pipe<int> count = pipe(0);
-  ///   late final Pipe<String> name = pipe('Hello');
+  ///   late final count = pipe(0);
+  ///   late final name = pipe('Hello');
   /// }
   /// ```
   @protected
@@ -99,8 +68,12 @@ abstract class Hub {
     String? key,
   }) {
     checkNotDisposed();
-    final newPipe = Pipe<T>(initialValue);
-    return registerPipe(newPipe, key);
+    final newPipe = Pipe<T>(initialValue, autoDispose: false);
+    final pipeKey = key ?? '_auto_${_autoRegisterCounter++}';
+    _pipes[pipeKey] = newPipe;
+    // Mark the pipe as registered with a controller
+    newPipe.isRegisteredWithController = true;
+    return newPipe;
   }
 
   /// Gets the total number of active subscribers across all pipes

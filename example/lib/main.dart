@@ -220,7 +220,7 @@ class _Example {
 // ============================================================================
 
 class CounterHub extends Hub {
-  late final count = Pipe(0);
+  late final count = pipe(0);
 
   void increment() => count.value++;
   void decrement() => count.value--;
@@ -285,9 +285,9 @@ class CounterExample extends StatelessWidget {
 // ============================================================================
 
 class UserHub extends Hub {
-  late final name = Pipe('John Doe');
-  late final age = Pipe(25);
-  late final email = Pipe('john@example.com');
+  late final name = pipe('John Doe');
+  late final age = pipe(25);
+  late final email = pipe('john@example.com');
 
   // Computed value using getter
   String get summary => '${name.value}, ${age.value} years old';
@@ -414,7 +414,7 @@ class _StandalonePipeExampleState extends State<StandalonePipeExample> {
 // ============================================================================
 
 class TimerHub extends Hub {
-  late final seconds = Pipe(0);
+  late final seconds = pipe(0);
 
   void startTimer() {
     Future.doWhile(() async {
@@ -475,14 +475,16 @@ class SingleSinkExample extends StatelessWidget {
 // ============================================================================
 
 class MultiCounterHub extends Hub {
-  late final counterA = Pipe(0);
-  late final counterB = Pipe(0);
-  late final counterC = Pipe(0);
+  late final counterA = pipe(0);
+  late final counterB = pipe(0);
+  late final counterC = pipe(0);
 
   void incrementA() => counterA.value++;
   void incrementB() => counterB.value++;
   void incrementC() => counterC.value++;
 }
+
+final counterD = Pipe(0);
 
 class MultipleSinksExample extends StatelessWidget {
   const MultipleSinksExample({super.key});
@@ -511,6 +513,9 @@ class MultipleSinksExample extends StatelessWidget {
             _CounterRow('Counter C', context.read<MultiCounterHub>().counterC,
                 () {
               context.read<MultiCounterHub>().incrementC();
+            }),
+            _CounterRow('Counter D', counterD, () {
+              counterD.value++;
             }),
           ],
         ),
@@ -565,9 +570,9 @@ class _CounterRow extends StatelessWidget {
 // ============================================================================
 
 class CalculatorHub extends Hub {
-  late final a = Pipe(5);
-  late final b = Pipe(10);
-  late final operation = Pipe<String>('+');
+  late final a = pipe(5);
+  late final b = pipe(10);
+  late final operation = pipe<String>('+');
 
   double get result {
     switch (operation.value) {
@@ -662,7 +667,7 @@ class WellExample extends StatelessWidget {
 // ============================================================================
 
 class ThemeHub extends Hub {
-  late final isDark = Pipe(false);
+  late final isDark = pipe(false);
 
   void toggle() => isDark.value = !isDark.value;
 }
@@ -713,8 +718,8 @@ class HubProviderExample extends StatelessWidget {
 // ============================================================================
 
 class AuthHub extends Hub {
-  final isLoggedIn = Pipe(false);
-  final username = Pipe('Guest');
+  late final isLoggedIn = pipe(false);
+  late final username = pipe('Guest');
 
   void login(String name) {
     username.value = name;
@@ -728,8 +733,8 @@ class AuthHub extends Hub {
 }
 
 class SettingsHub extends Hub {
-  late final fontSize = Pipe(16.0);
-  late final enableNotifications = Pipe(true);
+  late final fontSize = pipe(16.0);
+  late final enableNotifications = pipe(true);
 
   void increaseFontSize() => fontSize.value += 2;
   void decreaseFontSize() => fontSize.value -= 2;
@@ -1308,7 +1313,7 @@ class MultiHubProviderValueExample extends StatelessWidget {
 // ============================================================================
 
 class CounterGlobalHub extends Hub {
-  late final count = Pipe(0);
+  late final count = pipe(0);
   void increment() => count.value++;
 }
 
@@ -1397,8 +1402,8 @@ class Comp extends StatelessWidget {
 // ============================================================================
 
 class ShoppingHub extends Hub {
-  late final items = Pipe<List<String>>([]);
-  late final pricePerItem = Pipe(9.99);
+  late final items = pipe<List<String>>([]);
+  late final pricePerItem = pipe(9.99);
 
   // Computed values using getters
   int get itemCount => items.value.length;
@@ -1509,9 +1514,9 @@ class ComputedValuesExample extends StatelessWidget {
 // ============================================================================
 
 class DataHub extends Hub {
-  late final isLoading = Pipe(false);
-  late final data = Pipe<String?>(null);
-  late final error = Pipe<String?>(null);
+  late final isLoading = pipe(false);
+  late final data = pipe<String?>(null);
+  late final error = pipe<String?>(null);
 
   Future<void> fetchData() async {
     isLoading.value = true;
@@ -1587,9 +1592,9 @@ class AsyncExample extends StatelessWidget {
 // ============================================================================
 
 class FormHub extends Hub {
-  late final name = Pipe('');
-  late final email = Pipe('');
-  late final age = Pipe('');
+  late final name = pipe('');
+  late final email = pipe('');
+  late final age = pipe('');
 
   // Validation computed values
   bool get isNameValid => name.value.length >= 3;
@@ -1713,7 +1718,7 @@ class UserProfile {
 }
 
 class UserProfileHub extends Hub {
-  final user = Pipe<UserProfile>(
+  late final user = pipe<UserProfile>(
     UserProfile(
       name: 'John Doe',
       age: 28,

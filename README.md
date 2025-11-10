@@ -26,6 +26,7 @@
   </b>
   <br><br>
   <span>
+     <i>
       PipeX eliminates boilerplate.<br>
       Just pure, fine-grained reactivity with Dart Object Manipulation and Custom Elements <br>
      </i>

@@ -401,7 +401,5 @@ void main() {
           reason:
               'Pipe should auto-dispose when both subscribers and listeners are empty');
     });
-
- 
   });
 }

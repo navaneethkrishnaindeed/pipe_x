@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_use_of_protected_member
+
 import 'package:flutter/widgets.dart';
 
 import '../core/pipe.dart';
@@ -75,11 +77,24 @@ class Sink<T> extends Widget {
   /// ### Notes
   /// - Ensure the [Pipe] provided is initialized before using in [Sink].
   /// - **Avoid Nesting**: Try to keep nesting minimal to maintain readability and performance.
-  const Sink({
+  Sink({
     required this.pipe,
     required this.builder,
     super.key,
-  });
+  }) : assert(
+          // Catch accidental use with a disposed pipe early
+          !pipe.disposed,
+          '\n\n'
+          ' Sink received a disposed Pipe!\n\n'
+          ' Create the Pipe before passing it to Sink and ensure it is not disposed.\n'
+          'Example:\n'
+          '  final count = Pipe<int>(0);\n'
+          '  // ... later in the widget tree\n'
+          '  Sink<int>(\n'
+          '    pipe: count,\n'
+          '    builder: (context, value) => Text(\'\$value\'),\n'
+          '  )\n',
+        );
 
   @override
   Element createElement() => SinkElement<T>(this);

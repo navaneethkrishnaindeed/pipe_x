@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_use_of_protected_member
+
 import 'package:flutter/foundation.dart';
 
 import 'pipe.dart';
@@ -27,6 +29,9 @@ abstract class Hub {
   bool _disposed = false;
   final Map<String, Pipe> _pipes = {};
   int _autoRegisterCounter = 0;
+  final List<VoidCallback> _hubListeners = [];
+  final Map<VoidCallback, Map<Pipe, void Function(dynamic)>>
+      _listenerToPipeCallbacks = {};
 
   /// Creates a hub
   Hub();
@@ -44,10 +49,26 @@ abstract class Hub {
   @protected
   T registerPipe<T extends Pipe>(T pipe, [String? key]) {
     checkNotDisposed();
+    assert(
+      !pipe.disposed,
+      '\n\n'
+      ' Cannot register a disposed Pipe to Hub!\n\n'
+      ' The pipe you are trying to register has already been disposed.\n'
+      ' Make sure you are not registering a pipe that has been disposed.\n'
+      'Tip: Create a new pipe instance or ensure the pipe is alive before registering.\n',
+    );
     final pipeKey = key ?? pipe.hashCode.toString();
     _pipes[pipeKey] = pipe;
     // Mark the pipe as registered with a controller
     pipe.isRegisteredWithController = true;
+
+    // Attach hub listeners to this pipe
+    for (final hubCallback in _hubListeners) {
+      final pipeListener = (_) => hubCallback();
+      _listenerToPipeCallbacks[hubCallback]![pipe] = pipeListener;
+      pipe.addListener(pipeListener);
+    }
+
     return pipe;
   }
 
@@ -70,10 +91,7 @@ abstract class Hub {
     checkNotDisposed();
     final newPipe = Pipe<T>(initialValue, autoDispose: false);
     final pipeKey = key ?? '_auto_${_autoRegisterCounter++}';
-    _pipes[pipeKey] = newPipe;
-    // Mark the pipe as registered with a controller
-    newPipe.isRegisteredWithController = true;
-    return newPipe;
+    return registerPipe(newPipe, pipeKey);
   }
 
   /// Gets the total number of active subscribers across all pipes
@@ -82,6 +100,51 @@ abstract class Hub {
   /// UI are subscribed to this hub's state.
   int get subscriberCount {
     return _pipes.values.fold(0, (sum, pipe) => sum + pipe.subscriberCount);
+  }
+
+  /// Listens to all pipe changes in this hub
+  ///
+  /// The callback is triggered whenever any pipe value updates.
+  /// Returns a dispose function to remove the listener.
+  ///
+  /// Example:
+  /// ```dart
+  /// final hub = MyHub();
+  /// final removeListener = hub.listen(() {
+  ///   print('Something changed!');
+  /// });
+  ///
+  /// // Later, to clean up:
+  /// removeListener();
+  /// ```
+  VoidCallback addListener(VoidCallback callback) {
+    checkNotDisposed();
+    _hubListeners.add(callback);
+
+    // Initialize tracking map for this callback
+    final pipeListeners = <Pipe, void Function(dynamic)>{};
+    _listenerToPipeCallbacks[callback] = pipeListeners;
+
+    // Attach callback to all existing pipes
+    for (final pipe in _pipes.values) {
+      final listener = (_) => callback();
+      pipeListeners[pipe] = listener;
+      pipe.addListener(listener);
+    }
+
+    // Return dispose function
+    return () {
+      _hubListeners.remove(callback);
+      // Remove all pipe-specific listeners
+      final listeners = _listenerToPipeCallbacks.remove(callback);
+      if (listeners != null) {
+        for (final entry in listeners.entries) {
+          if (!entry.key.disposed) {
+            entry.key.removeListener(entry.value);
+          }
+        }
+      }
+    };
   }
 
   /// Override this method to clean up resources when the hub is disposed
@@ -103,6 +166,10 @@ abstract class Hub {
       pipe.dispose();
     }
     _pipes.clear();
+
+    // Clear hub listeners
+    _hubListeners.clear();
+    _listenerToPipeCallbacks.clear();
 
     onDispose();
   }

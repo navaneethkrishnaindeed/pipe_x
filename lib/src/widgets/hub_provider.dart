@@ -97,13 +97,21 @@ class HubProvider<T extends Hub> extends StatefulWidget {
   ///
   /// Use this when you need the hub instance in your build method.
   ///
-  /// Throws [StateError] if no provider is found.
+  /// Throws [StateError] if no provider is found or if the hub is disposed.
   static T of<T extends Hub>(BuildContext context) {
     final provider =
         context.dependOnInheritedWidgetOfExactType<_InheritedHub<T>>();
 
     if (provider != null) {
-      return provider.hub;
+      final hub = provider.hub;
+      if (hub.disposed) {
+        throw StateError(
+          'Cannot access a disposed Hub.\n'
+          'The hub of type $T has already been disposed.\n'
+          'This usually happens when trying to access a hub after its provider has been removed from the tree.',
+        );
+      }
+      return hub;
     }
 
     // Also check for dynamic provider from MultiHubProvider
@@ -123,6 +131,13 @@ class HubProvider<T extends Hub> extends StatefulWidget {
           try {
             final hub = (widget as dynamic).hub;
             if (hub is T) {
+              if (hub.disposed) {
+                throw StateError(
+                  'Cannot access a disposed Hub.\n'
+                  'The hub of type $T has already been disposed.\n'
+                  'This usually happens when trying to access a hub after its provider has been removed from the tree.',
+                );
+              }
               context.dependOnInheritedElement(element);
               return hub;
             }
@@ -152,12 +167,20 @@ class HubProvider<T extends Hub> extends StatefulWidget {
   /// )
   /// ```
   ///
-  /// Throws [StateError] if no provider is found.
+  /// Throws [StateError] if no provider is found or if the hub is disposed.
   static T read<T extends Hub>(BuildContext context) {
     final provider = context.getInheritedWidgetOfExactType<_InheritedHub<T>>();
 
     if (provider != null) {
-      return provider.hub;
+      final hub = provider.hub;
+      if (hub.disposed) {
+        throw StateError(
+          'Cannot read from a disposed Hub.\n'
+          'The hub of type $T has already been disposed.\n'
+          'This usually happens when trying to access a hub after its provider has been removed from the tree.',
+        );
+      }
+      return hub;
     }
 
     // Also check for dynamic provider from MultiHubProvider
@@ -177,6 +200,13 @@ class HubProvider<T extends Hub> extends StatefulWidget {
           try {
             final hub = (widget as dynamic).hub;
             if (hub is T) {
+              if (hub.disposed) {
+                throw StateError(
+                  'Cannot read from a disposed Hub.\n'
+                  'The hub of type $T has already been disposed.\n'
+                  'This usually happens when trying to access a hub after its provider has been removed from the tree.',
+                );
+              }
               return hub;
             }
           } catch (_) {}

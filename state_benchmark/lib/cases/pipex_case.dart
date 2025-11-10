@@ -143,7 +143,7 @@ class DerivedStateHub extends Hub {
     summary = registerPipe(Pipe('Count: 0, Double: 0, Even'));
 
     // Listen to base and update derived values
-    baseCount.addListener(_updateDerivedValues);
+    baseCount.addListener((value) => _updateDerivedValues);
   }
 
   void _updateDerivedValues() {

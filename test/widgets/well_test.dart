@@ -152,17 +152,15 @@ void main() {
       boolPipe.dispose();
     });
 
-    testWidgets('should handle empty pipe list', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Well(
-            pipes: const [],
-            builder: (context) => const Text('empty'),
-          ),
+    testWidgets('should throw assertion error with empty pipe list',
+        (tester) async {
+      expect(
+        () => Well(
+          pipes: const [],
+          builder: (context) => const Text('empty'),
         ),
+        throwsAssertionError,
       );
-
-      expect(find.text('empty'), findsOneWidget);
     });
 
     testWidgets('should provide context to builder', (tester) async {

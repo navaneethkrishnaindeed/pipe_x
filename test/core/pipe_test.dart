@@ -20,7 +20,7 @@ void main() {
       final pipe = Pipe<int>(0);
       var callCount = 0;
 
-      pipe.addListener(() {
+      pipe.addListener((value) {
         callCount++;
       });
 
@@ -35,7 +35,7 @@ void main() {
       final pipe = Pipe<int>(5);
       var callCount = 0;
 
-      pipe.addListener(() {
+      pipe.addListener((value) {
         callCount++;
       });
 
@@ -48,7 +48,7 @@ void main() {
       final pipe = Pipe<int>(5);
       var callCount = 0;
 
-      pipe.addListener(() {
+      pipe.addListener((value) {
         callCount++;
       });
 
@@ -61,7 +61,7 @@ void main() {
       final pipe = Pipe<int>(0);
       var callCount = 0;
 
-      void listener() {
+      void listener(int value) {
         callCount++;
       }
 
@@ -121,7 +121,7 @@ void main() {
     test('should clear listeners on dispose', () {
       final pipe = Pipe<int>(0);
 
-      pipe.addListener(() {
+      pipe.addListener((value) {
         // Listener added but won't be called after dispose
       });
 
@@ -169,7 +169,7 @@ void main() {
       expect(pipe.disposed, false);
 
       // Add a listener
-      void listener() {}
+      void listener(int value) {}
       pipe.addListener(listener);
 
       // Remove the listener
@@ -186,8 +186,8 @@ void main() {
         () async {
       final pipe = Pipe<int>(0);
 
-      void listener1() {}
-      void listener2() {}
+      void listener1(int value) {}
+      void listener2(int value) {}
 
       pipe.addListener(listener1);
       pipe.addListener(listener2);

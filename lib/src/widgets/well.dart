@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_use_of_protected_member
+
 import 'package:flutter/widgets.dart';
 
 import '../core/pipe.dart';
@@ -107,11 +109,29 @@ class Well extends Widget {
   /// - Ensure each Pipe provided is initialized before use.
   /// - Consider the performance implications of rebuilding, especially with
   ///   complex widget trees.
-  const Well({
+  Well({
     required this.pipes,
     required this.builder,
     super.key,
-  });
+  })  : assert(
+          pipes.isNotEmpty,
+          '\n\n'
+          ' Well requires at least one pipe!\n\n'
+          ' Provide a non-empty list of pipes to listen to.\n'
+          'Example:\n'
+          '  Well(\n'
+          '    pipes: [hub.pipe1, hub.pipe2],  // ← At least one pipe\n'
+          '    builder: (context) => Text("..."),\n'
+          '  )\n',
+        ),
+        assert(
+          // Ensure none of the pipes are already disposed
+          pipes.every((p) => !p.disposed),
+          '\n\n'
+          ' Well received one or more disposed Pipes!\n\n'
+          ' Ensure all pipes passed to Well are alive (not disposed).\n'
+          'Tip: Create pipes on your Hub and let the Hub manage lifecycle.\n',
+        );
 
   @override
   Element createElement() => WellElement(this);

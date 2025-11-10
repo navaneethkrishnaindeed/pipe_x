@@ -23,7 +23,7 @@ class Pipe<T> {
   final Set<ReactiveSubscriber> _subscribers = {};
   bool _isNotifying = false;
   bool _disposed = false;
-  final List<VoidCallback> _listeners = [];
+  final List<void Function(T)> _listeners = [];
   bool _autoDispose;
   bool _isRegisteredWithController = false;
 
@@ -55,7 +55,6 @@ class Pipe<T> {
     bool? autoDispose,
   }) : _autoDispose = autoDispose ?? true;
 
-
   /// The current value of this pipe
   ///
   /// Throws [StateError] if this pipe has been disposed.
@@ -86,6 +85,7 @@ class Pipe<T> {
   ///
   /// By default, uses standard Dart inequality (!=) to compare values.
   /// Override this to customize when rebuilds occur.
+  @protected
   bool shouldNotify(T newValue) {
     return _value != newValue;
   }
@@ -93,6 +93,7 @@ class Pipe<T> {
   /// Notifies all subscribers that the value has changed
   ///
   /// This is called automatically by the setter. You typically don't need to call this manually.
+  @protected
   void notifySubscribers() {
     if (_isNotifying) return;
 
@@ -112,27 +113,26 @@ class Pipe<T> {
       // Notify additional listeners
       final listenersCopy = List.of(_listeners);
       for (final listener in listenersCopy) {
-        listener();
+        listener(_value);
       }
     } finally {
       _isNotifying = false;
     }
   }
 
-  /// Updates the internal value and notifies subscribers (for subclasses)
-  ///
-  /// This is used by subclasses to update the value
-  /// without going through the public setter.
-  void updateValue(T newValue) {
-    _value = newValue;
-    notifySubscribers();
-  }
-
   /// Attaches a subscriber
   ///
   /// This is called automatically when a Sink or Well widget mounts.
   /// You typically don't need to call this manually.
-  void attach(ReactiveSubscriber subscriber) => _subscribers.add(subscriber);
+  ///
+  /// Throws [StateError] if this pipe has been disposed.
+  @protected
+  void attach(ReactiveSubscriber subscriber) {
+    if (_disposed) {
+      throw StateError('Cannot attach to a disposed Pipe');
+    }
+    _subscribers.add(subscriber);
+  }
 
   /// Detaches a subscriber
   ///
@@ -141,7 +141,15 @@ class Pipe<T> {
   ///
   /// If [autoDispose] is true and this was the last subscriber, the pipe
   /// will automatically dispose itself.
+  ///
+  /// Note: Detaching from a disposed pipe is a no-op (doesn't throw).
+  /// This allows safe cleanup during widget unmounting.
+  @protected
   void detach(ReactiveSubscriber subscriber) {
+    // Allow detaching from disposed pipes during cleanup - just do nothing
+    if (_disposed) {
+      return;
+    }
     _subscribers.remove(subscriber);
 
     // Auto-dispose if enabled, not managed by hub, and no more subscribers
@@ -161,12 +169,49 @@ class Pipe<T> {
 
   /// Adds a listener callback that will be called when the value changes
   ///
+  /// The callback receives the new value as a parameter.
+  ///
   /// This is useful for side effects or when creating computed pipes.
   /// Remember to [removeListener] when done to avoid memory leaks.
-  void addListener(VoidCallback listener) => _listeners.add(listener);
+  ///
+  /// ### Example:
+  /// ```dart
+  /// final counter = Pipe<int>(0);
+  ///
+  /// counter.addListener((value) {
+  ///   print('Counter changed to: $value');
+  /// });
+  ///
+  /// counter.value++; // Prints: Counter changed to: 1
+  /// ```
+  ///
+  /// Throws [StateError] if this pipe has been disposed.
+  void addListener(void Function(T) listener) {
+    if (_disposed) {
+      throw StateError('Cannot add listener to a disposed Pipe');
+    }
+    _listeners.add(listener);
+  }
 
   /// Removes a previously added listener
-  void removeListener(VoidCallback listener) {
+  ///
+  /// ### Example:
+  /// ```dart
+  /// void logChanges(int value) {
+  ///   print('Value: $value');
+  /// }
+  ///
+  /// pipe.addListener(logChanges);
+  /// // ... later ...
+  /// pipe.removeListener(logChanges);
+  /// ```
+  ///
+  /// Throws [StateError] if this pipe has been disposed.
+  void removeListener(void Function(T) listener) {
+    if (_disposed) {
+      throw StateError('Cannot remove listener from a disposed Pipe');
+    }
+
     _listeners.remove(listener);
 
     // Auto-dispose if enabled, not managed by hub, and no more subscribers/listeners
@@ -211,6 +256,9 @@ class Pipe<T> {
   }
 
   /// Returns the number of active subscribers
+  ///
+  /// This is mainly for internal use and debugging.
+  @protected
   int get subscriberCount => _subscribers.length;
 
   /// Whether this pipe has been disposed
@@ -219,15 +267,18 @@ class Pipe<T> {
   /// Whether this pipe will auto-dispose when subscriber count reaches 0
   ///
   /// Defaults to true for standalone pipes, false for hub-managed pipes.
+  @protected
   bool get autoDispose => _autoDispose;
 
   /// Whether this pipe is registered with a hub
+  @protected
   bool get isRegisteredWithController => _isRegisteredWithController;
 
   /// Internal method to mark this pipe as registered with a hub
   ///
   /// This is called by Hub when a pipe is registered and should not be
   /// called directly by user code.
+  @protected
   set isRegisteredWithController(bool value) {
     _isRegisteredWithController = value;
   }

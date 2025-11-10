@@ -166,17 +166,14 @@ void main() {
       nameHub.dispose();
     });
 
-    testWidgets('should work with empty list', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: MultiHubProvider(
-            hubs: [],
-            child: Text('test'),
-          ),
+    testWidgets('should throw assertion error with empty list', (tester) async {
+      expect(
+        () => MultiHubProvider(
+          hubs: const [],
+          child: const Text('test'),
         ),
+        throwsAssertionError,
       );
-
-      expect(find.text('test'), findsOneWidget);
     });
 
     testWidgets('should work with single hub', (tester) async {

@@ -92,11 +92,24 @@ class MultiHubProvider extends StatelessWidget {
   ///   child: MyApp(),
   /// )
   /// ```
-  const MultiHubProvider({
+  MultiHubProvider({
     required this.hubs,
     required this.child,
     super.key,
-  });
+  }) : assert(
+          hubs.isNotEmpty,
+          '\n\n'
+          ' MultiHubProvider requires at least one hub!\n\n'
+          ' Provide a non-empty list of hubs or hub factories.\n'
+          'Example:\n'
+          '  MultiHubProvider(\n'
+          '    hubs: [\n'
+          '      () => AuthHub(),  // ← At least one hub\n'
+          '      () => ThemeHub(),\n'
+          '    ],\n'
+          '    child: MyApp(),\n'
+          '  )\n',
+        );
 
   @override
   Widget build(BuildContext context) {

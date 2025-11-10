@@ -111,6 +111,7 @@ export 'src/core/reactive_subscriber.dart';
 export 'src/widgets/sink.dart';
 export 'src/widgets/well.dart';
 export 'src/widgets/hub_provider.dart';
+export 'src/widgets/hub_listener.dart';
 export 'src/widgets/multi_hub_provider.dart';
 
 // Extensions

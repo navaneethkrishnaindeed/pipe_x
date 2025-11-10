@@ -328,7 +328,7 @@ void main() {
       expect(pipe.autoDispose, true);
 
       // Add a listener
-      void listener() {}
+      void listener(int value) {}
       pipe.addListener(listener);
 
       await tester.pumpWidget(
@@ -365,7 +365,7 @@ void main() {
       final pipe = Pipe<int>(0);
       int listenerCallCount = 0;
 
-      void listener() {
+      void listener(int value) {
         listenerCallCount++;
       }
 
@@ -409,7 +409,7 @@ void main() {
       final pipe = Pipe<int>(0);
       int listenerCallCount = 0;
 
-      void listener() {
+      void listener(int value) {
         listenerCallCount++;
       }
 

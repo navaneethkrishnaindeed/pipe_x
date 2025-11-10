@@ -1,6 +1,6 @@
 name: pipe_x
 description: A lightweight, reactive state management library for Flutter with fine-grained reactivity and minimal boilerplate.
-version: 1.4.0
+version: 1.4.0+1
 
 homepage: https://github.com/navaneethkrishnaindeed/pipe_x
 repository: https://github.com/navaneethkrishnaindeed/pipe_x

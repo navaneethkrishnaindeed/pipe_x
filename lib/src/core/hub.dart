@@ -1,4 +1,4 @@
-// ignore_for_file: invalid_use_of_protected_member
+// ignore_for_file: invalid_use_of_protected_member, prefer_function_declarations_over_variables
 
 import 'package:flutter/foundation.dart';
 

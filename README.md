@@ -10,7 +10,7 @@
     <img src="https://img.shields.io/pub/v/pipe_x.svg" alt="pub package" />
   </a>
   <a href="https://github.com/navaneethkrishnaindeed/pipe_x">
-    <img src="https://img.shields.io/github/stars/navaneethkrishnaindeed/pipe_x?style=social" alt="GitHub" />
+    <img src="https://img.shields.io/github/stars/navaneethkrishnaindeed/pipe_x" alt="GitHub" />
   </a>
   <a href="https://discord.gg/rWKewdGH">
      <img src="https://img.shields.io/badge/Discord-Join%20Server-7289da?logo=discord&logoColor=white" alt="Discord" />

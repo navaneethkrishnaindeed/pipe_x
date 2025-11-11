@@ -12,7 +12,7 @@
   <a href="https://github.com/navaneethkrishnaindeed/pipe_x">
     <img src="https://img.shields.io/github/stars/navaneethkrishnaindeed/pipe_x" alt="GitHub" />
   </a>
-  <a href="https://discord.gg/rWKewdGH">
+  <a href="https://discord.gg/kyn3SZxUWn">
      <img src="https://img.shields.io/badge/Discord-Join%20Server-7289da?logo=discord&logoColor=white" alt="Discord" />
   </a>
   <br><br>

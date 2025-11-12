@@ -2282,7 +2282,7 @@ class TargetCounterHub extends Hub {
 
   @override
   void dispose() {
-    _removeListener(); 
+    _removeListener();
     super.dispose();
   }
 }

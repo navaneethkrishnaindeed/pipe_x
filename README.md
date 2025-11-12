@@ -51,9 +51,6 @@
 </p>
 
 ---
-[![Discord](https://img.shields.io/discord/1036120941288922492?color=5865F2&logo=discord&label=Join%20our%20Discord)](https://discord.gg/kyn3SZxUWn)
-[![Discord](https://img.shields.io/discord/1430094716728250431?color=5865F2&logo=discord&label=Join%20our%20Discord)](https://discord.gg/kyn3SZxUWn)
-[![Chat on Discord](https://img.shields.io/discord/1430094716728250431?color=9B59B6&logo=discord&label=Chat%20on%20Discord)](https://discord.gg/kyn3SZxUWn)
 
 
 ## 📑 Table of Contents

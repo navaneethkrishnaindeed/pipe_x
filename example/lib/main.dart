@@ -1556,6 +1556,7 @@ class DataHub extends Hub {
   late final age = pipe<int>(25);
 
   Future<void> fetchUserProfile() async {
+    userProfile.value = null;
     isLoading.value = true;
     error.value = null;
 
@@ -1613,7 +1614,17 @@ class _AsyncExampleState extends State<AsyncExample> {
       body: Stack(
         children: [
           // Bottom Layer: Profile Screen (static data + reactive fields)
-          _ProfileScreen(hub: hub),
+          Sink(
+            pipe: hub.userProfile,
+            builder: (context, profile) {
+              if (profile == null) {
+                return Center(
+                  child: const Text('No profile data loaded'),
+                );
+              }
+              return _ProfileScreen(hub: hub);
+            },
+          ),
 
           // Top Layer: Loading Overlay (Sink for loading state)
           Sink(
@@ -1622,7 +1633,7 @@ class _AsyncExampleState extends State<AsyncExample> {
               if (!isLoading) return const SizedBox.shrink();
 
               return Container(
-                color: const Color.fromARGB(255, 197, 228, 213),
+                color: Colors.black54,
                 child: const Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1659,167 +1670,157 @@ class _ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final profile = hub.userProfile.value!;
+
     // Use Sink to reactively rebuild when profile data is loaded!
-    return Sink(
-      pipe: hub.userProfile,
-      builder: (context, profile) {
-        if (profile == null) {
-          return const Center(
-            child: Text('No profile data loaded'),
-          );
-        }
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          const Text(
+            '📱 User Profile',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Profile data loaded via Pipe! Gender & Age use separate Sinks for independent updates.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const Divider(height: 32),
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 16),
+          _buildField('ID', profile.id, Icons.badge),
+          _buildField('Name', profile.name, Icons.person),
+          _buildField('Email', profile.email, Icons.email),
+          _buildField('Phone', profile.phone, Icons.phone),
+          _buildField('Address', profile.address, Icons.home),
+          _buildField('City', profile.city, Icons.location_city),
+          _buildField('Country', profile.country, Icons.flag),
+          _buildField('Occupation', profile.occupation, Icons.work),
+          _buildField('Bio', profile.bio, Icons.description, maxLines: 3),
+          _buildField('Joined', profile.joinedDate, Icons.calendar_today),
+
+          const SizedBox(height: 16),
+
+          // Gender - Reactive with Sink
+          Row(
             children: [
-              // Header
-              const Text(
-                '📱 User Profile',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Profile data loaded via Pipe! Gender & Age use separate Sinks for independent updates.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              const Divider(height: 32),
-
-              const SizedBox(height: 16),
-              _buildField('ID', profile.id, Icons.badge),
-              _buildField('Name', profile.name, Icons.person),
-              _buildField('Email', profile.email, Icons.email),
-              _buildField('Phone', profile.phone, Icons.phone),
-              _buildField('Address', profile.address, Icons.home),
-              _buildField('City', profile.city, Icons.location_city),
-              _buildField('Country', profile.country, Icons.flag),
-              _buildField('Occupation', profile.occupation, Icons.work),
-              _buildField('Bio', profile.bio, Icons.description, maxLines: 3),
-              _buildField('Joined', profile.joinedDate, Icons.calendar_today),
-
-              const SizedBox(height: 16),
-
-              // Gender - Reactive with Sink
-              Row(
+              const Icon(Icons.wc, size: 20, color: Colors.grey),
+              const SizedBox(width: 12),
+              const Text('Gender:',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(width: 8),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Sink(
+            pipe: hub.gender,
+            builder: (context, gender) {
+              return Row(
                 children: [
-                  const Icon(Icons.wc, size: 20, color: Colors.grey),
-                  const SizedBox(width: 12),
-                  const Text('Gender:',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(width: 8),
+                  ...['Male', 'Female', 'Other'].map((g) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(g),
+                          selected: gender == g,
+                          onSelected: (selected) {
+                            if (selected) hub.gender.value = g;
+                          },
+                        ),
+                      )),
                 ],
-              ),
-              const SizedBox(height: 16),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Age - Reactive with Sink
+          Row(
+            children: [
+              const Icon(Icons.cake, size: 20, color: Colors.grey),
+              const SizedBox(width: 12),
+              const Text('Age:', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(width: 8),
               Sink(
-                pipe: hub.gender,
-                builder: (context, gender) {
+                pipe: hub.age,
+                builder: (context, age) {
                   return Row(
                     children: [
-                      ...['Male', 'Female', 'Other'].map((g) => Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: ChoiceChip(
-                              label: Text(g),
-                              selected: gender == g,
-                              onSelected: (selected) {
-                                if (selected) hub.gender.value = g;
-                              },
-                            ),
-                          )),
+                      Text(
+                        '$age years',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        children: [
+                          IconButton(
+                            onPressed: () => hub.age.value++,
+                            icon: const Icon(Icons.add_circle),
+                            color: Colors.green,
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              if (hub.age.value > 1) hub.age.value--;
+                            },
+                            icon: const Icon(Icons.remove_circle),
+                            color: Colors.red,
+                          ),
+                        ],
+                      ),
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 16),
-
-              // Age - Reactive with Sink
-              Row(
-                children: [
-                  const Icon(Icons.cake, size: 20, color: Colors.grey),
-                  const SizedBox(width: 12),
-                  const Text('Age:',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(width: 8),
-                  Sink(
-                    pipe: hub.age,
-                    builder: (context, age) {
-                      return Row(
-                        children: [
-                          Text(
-                            '$age years',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Column(
-                            children: [
-                              IconButton(
-                                onPressed: () => hub.age.value++,
-                                icon: const Icon(Icons.add_circle),
-                                color: Colors.green,
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  if (hub.age.value > 1) hub.age.value--;
-                                },
-                                icon: const Icon(Icons.remove_circle),
-                                color: Colors.red,
-                              ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.amber.shade200),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.tips_and_updates, size: 16, color: Colors.amber),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Try changing Gender or Age - ONLY those Sinks rebuild!\n'
-                        'The outer Sink (userProfile) and static fields stay untouched. 🚀\n'
-                        'Reload → Outer Sink rebuilds all. Edit field → Only that Sink rebuilds!',
-                        style: TextStyle(fontSize: 11, color: Colors.black87),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Reload Button
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: hub.fetchUserProfile,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Reload Profile'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.amber.shade200),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.tips_and_updates, size: 16, color: Colors.amber),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Try changing Gender or Age - ONLY those Sinks rebuild!\n'
+                    'The outer Sink (userProfile) and static fields stay untouched. 🚀\n'
+                    'Reload → Outer Sink rebuilds all. Edit field → Only that Sink rebuilds!',
+                    style: TextStyle(fontSize: 11, color: Colors.black87),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Reload Button
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: hub.fetchUserProfile,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reload Profile'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2261,6 +2262,9 @@ class TargetCounterHub extends Hub {
   late final VoidCallback _removeListener;
 
   void onTargetReached(BuildContext context) {
+    // _removeListener is a function that removes the listener from the hub.
+    // You may or may not call it in dispose, it's up to you.
+    // If you don't call it in dispose, the listener will be also disposed when the hub is disposed.
     _removeListener = addListener(() {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -2278,7 +2282,7 @@ class TargetCounterHub extends Hub {
 
   @override
   void dispose() {
-    _removeListener();
+    _removeListener(); 
     super.dispose();
   }
 }

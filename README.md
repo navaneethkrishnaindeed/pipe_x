@@ -51,6 +51,10 @@
 </p>
 
 ---
+[![Discord](https://img.shields.io/discord/1036120941288922492?color=5865F2&logo=discord&label=Join%20our%20Discord)](https://discord.gg/kyn3SZxUWn)
+[![Discord](https://img.shields.io/discord/1430094716728250431?color=5865F2&logo=discord&label=Join%20our%20Discord)](https://discord.gg/kyn3SZxUWn)
+[![Chat on Discord](https://img.shields.io/discord/1430094716728250431?color=9B59B6&logo=discord&label=Chat%20on%20Discord)](https://discord.gg/kyn3SZxUWn)
+
 
 ## 📑 Table of Contents
 
@@ -528,23 +532,24 @@ class MyWidget extends StatefulWidget {
 }
 
 class _MyWidgetState extends State<MyWidget> {
-  VoidCallback? _removeListener;
+  late final VoidCallback _removeListener;
   
   @override
   void initState() {
     super.initState();
     final hub = context.read<DataHub>();
-    
+    // _removeListener is a function that removes the listener from the hub.
+    // You may or may not call it in dispose, it's up to you.
+    // If you don't call it in dispose, the listener will be also disposed when the hub is disposed.
     _removeListener = hub.addListener(() {
       // Called whenever ANY pipe in this hub changes
       print('Hub state changed!');
-      // Do NOT call setState here - use HubListener widget instead
     });
   }
   
   @override
   void dispose() {
-    _removeListener?.call(); // Cleanup
+    _removeListener(); // Cleanup
     super.dispose();
   }
   
@@ -559,49 +564,77 @@ class _MyWidgetState extends State<MyWidget> {
 
 ---
 
-### 3. Granular Reactivity
+### 3. Nested Reactive Widgets & Element Boundaries
 
-PipeX allows extremely fine-grained control over what rebuilds:
+PipeX doesn't stop you from using multiple reactive widgets — it just prevents you from nesting them inside the same reactive subtree.
+
+That **"same subtree"** part is key.
+
+#### ❌ Invalid: Nested Sinks in Same Build Subtree
 
 ```dart
-class ProfileHub extends Hub {
-  late final userProfile = pipe<UserProfile?>(null);
-  late final gender = pipe<String>('Male');
-  late final age = pipe<int>(25);
-}
-
-// In UI:
 Sink(
-  pipe: hub.userProfile,
-  builder: (context, profile) {
-    if (profile == null) return CircularProgressIndicator();
-    
+  pipe: hub.pipe1,
+  builder: (_) {
     return Column(
       children: [
-        // Static fields (rebuild only when userProfile changes)
-        Text('Name: ${profile.name}'),
-        Text('Email: ${profile.email}'),
-        Text('Phone: ${profile.phone}'),
-        
-        // Separate reactive fields (rebuild independently!)
+        Text('Outer Sink'),
         Sink(
-          pipe: hub.gender,
-          builder: (context, gender) => Text('Gender: $gender'),
-        ),
-        Sink(
-          pipe: hub.age,
-          builder: (context, age) => Text('Age: $age'),
+          pipe: hub.pipe2,
+          builder: (_) {
+            return Text('Inner Sink');
+          },
         ),
       ],
     );
   },
-)
+);
 ```
 
-**Result**:
-- Change `gender` → Only gender Sink rebuilds
-- Change `age` → Only age Sink rebuilds
-- Reload profile → Outer Sink rebuilds (all static fields + nested Sinks get new instances but don't rebuild unless their values changed)
+In this case, both Sinks belong to the same build subtree. The inner one is literally created inside the build of the outer one. So if the outer Sink rebuilds, the inner one rebuilds too — even if its data didn't change.
+
+**PipeX detects this and throws an assertion to prevent redundant rebuilds.**
+
+#### ✅ Valid: Sinks in Separate Component Subtrees
+
+```dart
+Sink(
+  pipe: hub.pipe1,
+  builder: (_) => MyComponent(),
+);
+```
+
+And inside `MyComponent`:
+
+```dart
+class MyComponent extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Sink(
+      pipe: hub.pipe2,
+      builder: (_) {
+        return Text('Inner Sink inside its own component');
+      },
+    );
+  }
+}
+```
+
+This is fine because `MyComponent` creates its own Element subtree. That means the inner Sink lives in a totally separate part of the UI tree — not nested in the same build scope.
+
+#### Why This Distinction Matters
+
+A **Widget** in Flutter is just a configuration — basically a blueprint or description of how something should look.
+
+An **Element** is the actual mounted instance in the tree — the thing Flutter updates, rebuilds, and manages.
+
+When you call `build()`, Flutter walks the **Element tree**, not the widget tree. PipeX attaches itself to these Elements and tracks reactive builders at that level.
+
+So when it says "no nested Sinks," it's not checking widgets — it's checking whether two reactive Elements exist inside the same build subtree.
+
+#### In Short
+
+PipeX isn't limiting composition — it's enforcing clean reactivity boundaries at the Element level. This guarantees precise rebuild control and predictable updates — without relying on developer discipline to manage rebuild scopes
 
 ---
 
@@ -616,7 +649,7 @@ class MyWidget extends StatefulWidget {
 }
 
 class _MyWidgetState extends State<MyWidget> {
-  late final counter = Pipe(0); // Auto-disposes when no subscribers
+  final counter = Pipe(0); // Auto-disposes when no subscribers
   
   @override
   Widget build(BuildContext context) {

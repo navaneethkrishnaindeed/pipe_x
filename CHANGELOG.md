@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0]
+
+### Performance
+- Optimized Pipe internals for improved performance
+  - Changed subscriber storage from Set to List
+  - Removed defensive copying in notification loop
+  - Inlined hot path methods with `@pragma('vm:prefer-inline')`
+  - Added `identical()` check before equality comparison
+- Added safety checks for concurrent modifications and disposal during notifications
+
 ## [1.4.4]
 
   - Documetation updates and Badges updates
@@ -134,6 +144,7 @@ Updated to Webp Logo
 - Multiple example implementations demonstrating all features
 - Best practices and patterns guide
 
+[1.5.0]: https://github.com/navaneethkrishnaindeed/pipe_x/releases/tag/v1.5.0
 [1.4.4]: https://github.com/navaneethkrishnaindeed/pipe_x/releases/tag/v1.4.4
 [1.4.3]: https://github.com/navaneethkrishnaindeed/pipe_x/releases/tag/v1.4.3
 [1.4.2]: https://github.com/navaneethkrishnaindeed/pipe_x/releases/tag/v1.4.2

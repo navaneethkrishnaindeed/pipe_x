@@ -22,8 +22,8 @@ import 'reactive_subscriber.dart';
 /// for disposal - no manual registration needed!
 class Pipe<T> {
   T _value;
-  // Use List instead of Set for faster iteration - subscribers rarely duplicate
-  final List<ReactiveSubscriber> _subscribers = [];
+  // Use List of Elements for zero-cast hot path - cast once during attach/detach
+  final List<Element> _subscribers = [];
   bool _isNotifying = false;
   bool _disposed = false;
   final List<void Function(T)> _listeners = [];
@@ -102,25 +102,18 @@ class Pipe<T> {
     if (_isNotifying) return;
 
     _isNotifying = true;
-    try {
-      // Fast path: Direct iteration without copying (95% of cases)
-      // Bounds check protects against concurrent modification (widget unmount during notification)
-      final subscribersLength = _subscribers.length;
-      for (var i = 0; i < subscribersLength; i++) {
-        // Safety: Check bounds in case list was modified during iteration
-        if (i >= _subscribers.length) break;
-        final subscriber = _subscribers[i];
-        // ReactiveSubscriber is already an Element, avoid redundant checks
-        if (subscriber.mounted) {
-          (subscriber as Element).markNeedsBuild();
-        }
-      }
 
-      // Notify additional listeners - fast path with safety check
+    // Subscribers: ULTRA FAST - no try-catch needed
+    // markNeedsBuild() is framework code, won't throw
+    final subscribersLength = _subscribers.length;
+    for (var i = 0; i < subscribersLength; i++) {
+      _subscribers[i].markNeedsBuild();
+    }
+
+    // Listeners: Protected - user code could throw
+    try {
       final listenersLength = _listeners.length;
       for (var i = 0; i < listenersLength; i++) {
-        // Safety: Check bounds in case listener modified the list
-        if (i >= _listeners.length) break;
         _listeners[i](_value);
       }
     } finally {
@@ -138,8 +131,8 @@ class Pipe<T> {
   @pragma('vm:prefer-inline')
   void attach(ReactiveSubscriber subscriber) {
     assert(!_disposed, 'Cannot attach to a disposed Pipe');
-    // Direct list add - fast path. No duplicate check needed in practice
-    _subscribers.add(subscriber);
+    // Cast once during attach (cold path) for zero-cast hot path
+    _subscribers.add(subscriber as Element);
   }
 
   /// Detaches a subscriber
@@ -159,9 +152,12 @@ class Pipe<T> {
       return;
     }
 
+    // Cast once during detach (cold path)
+    final element = subscriber as Element;
+
     // Optimized removal: iterate backwards for better removal performance
     for (var i = _subscribers.length - 1; i >= 0; i--) {
-      if (identical(_subscribers[i], subscriber)) {
+      if (identical(_subscribers[i], element)) {
         _subscribers.removeAt(i);
         break; // Assume single subscription per subscriber
       }

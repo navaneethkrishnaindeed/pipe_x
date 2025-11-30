@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+[1.6.0]
+
+### Performance
+- Much faster notification path
+  - Switched subscriber list from List<ReactiveSubscriber> to List<Element> for direct access.
+  - Casting now happens only during attach/detach, not during every update.
+  - Cut out extra bounds checks and mounted checks inside the loop.
+  - Try-catch is now only around user listener callbacks.
+  - Overall, rebuilds are faster because the hot path has far less overhead.
+
 ## [1.5.0]
 
 ### Performance
@@ -144,6 +154,7 @@ Updated to Webp Logo
 - Multiple example implementations demonstrating all features
 - Best practices and patterns guide
 
+[1.6.0]: https://github.com/navaneethkrishnaindeed/pipe_x/releases/tag/v1.6.0
 [1.5.0]: https://github.com/navaneethkrishnaindeed/pipe_x/releases/tag/v1.5.0
 [1.4.4]: https://github.com/navaneethkrishnaindeed/pipe_x/releases/tag/v1.4.4
 [1.4.3]: https://github.com/navaneethkrishnaindeed/pipe_x/releases/tag/v1.4.3

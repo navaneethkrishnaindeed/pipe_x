@@ -34,7 +34,7 @@
 </p>
 
 <p align="center">
-  <a href="state_benchmark/README.md">
+  <a href="https://github.com/navaneethkrishnaindeed/rainbench/blob/master/README.md">
     <img 
       src="https://img.shields.io/badge/📊_Read_Full_Benchmark_Report-Click_Here-blue?style=for-the-badge&logo=github" 
       alt="View Full Benchmark Report"

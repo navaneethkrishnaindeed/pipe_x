@@ -103,6 +103,9 @@
 library;
 
 // Core classes
+export 'src/core/async_pipe.dart';
+export 'src/core/async_value.dart';
+export 'src/core/computed_pipe.dart';
 export 'src/core/hub.dart';
 export 'src/core/pipe.dart';
 export 'src/core/reactive_subscriber.dart';

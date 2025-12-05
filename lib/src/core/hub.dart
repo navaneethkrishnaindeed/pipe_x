@@ -2,6 +2,9 @@
 
 import 'package:flutter/foundation.dart';
 
+import 'async_pipe.dart';
+import 'async_value.dart';
+import 'computed_pipe.dart';
 import 'pipe.dart';
 
 /// Reactive hub that manages state with automatic disposal
@@ -30,8 +33,7 @@ abstract class Hub {
   final Map<String, Pipe> _pipes = {};
   int _autoRegisterCounter = 0;
   final List<VoidCallback> _hubListeners = [];
-  final Map<VoidCallback, Map<Pipe, void Function(dynamic)>>
-      _listenerToPipeCallbacks = {};
+  final Map<VoidCallback, Map<Pipe, void Function(dynamic)>> _listenerToPipeCallbacks = {};
 
   /// Creates a hub
   Hub();
@@ -92,6 +94,122 @@ abstract class Hub {
     final newPipe = Pipe<T>(initialValue, autoDispose: false);
     final pipeKey = key ?? '_auto_${_autoRegisterCounter++}';
     return registerPipe(newPipe, pipeKey);
+  }
+
+  /// Creates and registers a [ComputedPipe] with dependencies
+  ///
+  /// A computed pipe derives its value from other pipes and automatically
+  /// updates when any dependency changes. This is more efficient than getters
+  /// because it caches the computed value and can be subscribed to.
+  ///
+  /// ```dart
+  /// class CartHub extends Hub {
+  ///   late final items = pipe(<CartItem>[]);
+  ///   late final taxRate = pipe(0.08);
+  ///
+  ///   // Computed pipe - updates when items or taxRate change
+  ///   late final total = computed(
+  ///     dependencies: [items, taxRate],
+  ///     compute: () {
+  ///       final subtotal = items.value.fold(0.0, (sum, i) => sum + i.price);
+  ///       return subtotal * (1 + taxRate.value);
+  ///     },
+  ///   );
+  /// }
+  /// ```
+  ///
+  /// ### When to use computed vs getters:
+  ///
+  /// **Use `computed()`** when:
+  /// - You need to subscribe to the derived value with Sink/Well
+  /// - The computation is expensive and should be cached
+  /// - You want fine-grained reactivity (only rebuild when result changes)
+  ///
+  /// **Use getters** when:
+  /// - The computation is trivial (e.g., `bool get isEmpty => items.value.isEmpty`)
+  /// - You don't need to subscribe to it directly
+  @protected
+  ComputedPipe<T> computed<T>({
+    required List<Pipe> dependencies,
+    required T Function() compute,
+    String? key,
+  }) {
+    checkNotDisposed();
+    final computedPipe = ComputedPipe<T>(
+      dependencies: dependencies,
+      compute: compute,
+    );
+    final pipeKey = key ?? '_computed_${_autoRegisterCounter++}';
+    return registerPipe(computedPipe, pipeKey);
+  }
+
+  /// Creates and registers an [AsyncPipe] for async operations
+  ///
+  /// An async pipe wraps a [Future] and exposes loading/data/error states
+  /// via [AsyncValue]. This is perfect for API calls and async operations.
+  ///
+  /// ```dart
+  /// class UserHub extends Hub {
+  ///   late final user = asyncPipe<User>(() => api.fetchUser());
+  ///   late final posts = asyncPipe<List<Post>>(
+  ///     () => api.fetchPosts(),
+  ///     immediate: false, // Don't fetch immediately
+  ///   );
+  ///
+  ///   void loadPosts() => posts.refresh();
+  /// }
+  /// ```
+  ///
+  /// Use in widgets with pattern matching:
+  /// ```dart
+  /// Sink<AsyncValue<User>>(
+  ///   pipe: hub.user,
+  ///   builder: (context, state) => state.when(
+  ///     loading: () => CircularProgressIndicator(),
+  ///     data: (user) => Text(user.name),
+  ///     onError: (e, _) => Text('Error: $e'),
+  ///   ),
+  /// )
+  /// ```
+  ///
+  /// - [futureFactory]: Function that returns the Future to execute
+  /// - [immediate]: If true (default), starts loading immediately
+  /// - [key]: Optional key for the pipe registration
+  @protected
+  AsyncPipe<T> asyncPipe<T>(
+    Future<T> Function() futureFactory, {
+    bool immediate = true,
+    String? key,
+  }) {
+    checkNotDisposed();
+    final async = AsyncPipe<T>(futureFactory, immediate: immediate);
+    final pipeKey = key ?? '_async_${_autoRegisterCounter++}';
+    return registerPipe(async, pipeKey);
+  }
+
+  /// Creates and registers an [AsyncPipe] with an initial value
+  ///
+  /// The pipe starts with [AsyncData] containing the initial value.
+  /// The future can be executed later with [AsyncPipe.refresh].
+  ///
+  /// ```dart
+  /// class SettingsHub extends Hub {
+  ///   late final theme = asyncPipeWithInitial(
+  ///     ThemeMode.system,
+  ///     () => storage.loadTheme(),
+  ///   );
+  /// }
+  /// ```
+  @protected
+  AsyncPipe<T> asyncPipeWithInitial<T>(
+    T initialValue,
+    Future<T> Function() futureFactory, {
+    String? key,
+  }) {
+    checkNotDisposed();
+    final async = AsyncPipe<T>.withInitialValue(initialValue, futureFactory);
+    final pipeKey = key ?? '_async_${_autoRegisterCounter++}';
+    return registerPipe(async, pipeKey);
   }
 
   /// Gets the total number of active subscribers across all pipes
